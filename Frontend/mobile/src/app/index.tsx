@@ -16,6 +16,8 @@ import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/lib/auth-context';
 import { requestPasswordReset } from '@/lib/session-api';
+import { BrandLockup } from '@/components/brand-lockup';
+import { FadeIn, MotionPressable } from '@/components/motion';
 
 const GREEN = '#078343';
 
@@ -42,15 +44,6 @@ function PasswordEye({ hidden }: { hidden: boolean }) {
     <View style={styles.eyeIcon}>
       <View style={styles.eyePupil} />
       {hidden && <View style={styles.eyeSlash} />}
-    </View>
-  );
-}
-
-function BrandMark() {
-  return (
-    <View style={styles.brandMark} accessibilityLabel="Logo StockFlow">
-      <Text style={styles.brandMarkLetter}>S</Text>
-      <View style={styles.brandWave} />
     </View>
   );
 }
@@ -187,13 +180,9 @@ export default function HomeScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.content}>
-            <View style={styles.brand}>
-              <BrandMark />
-              <Text style={styles.brandName}>StockFlow</Text>
-              <Text style={styles.tagline}>Gérez votre activité en toute simplicité</Text>
-            </View>
+            <FadeIn><View style={styles.brand}><BrandLockup variant="hero" tagline /></View></FadeIn>
 
-            <View style={styles.form}>
+            <FadeIn delay={120}><View style={styles.form}>
               <Text style={styles.heading}>Connexion</Text>
               <Field
                 icon="mail"
@@ -229,9 +218,9 @@ export default function HomeScreen() {
                 }
               />
 
-              <Pressable onPress={handleForgotPassword} style={styles.forgotButton}>
+              <MotionPressable onPress={handleForgotPassword} style={styles.forgotButton}>
                 <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
-              </Pressable>
+              </MotionPressable>
 
               {!!message && (
                 <Text style={[styles.message, messageIsSuccess && styles.successMessage]}>
@@ -239,23 +228,23 @@ export default function HomeScreen() {
                 </Text>
               )}
 
-              <Pressable
+              <MotionPressable
                 onPress={handleSubmit}
                 disabled={isLoading}
-                style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, isLoading && styles.disabled]}
+                style={[styles.primaryButton, isLoading && styles.disabled]}
                 accessibilityRole="button">
                 {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Se connecter</Text>}
-              </Pressable>
-            </View>
+              </MotionPressable>
+            </View></FadeIn>
 
-            <View style={styles.footer}>
+            <FadeIn delay={220}><View style={styles.footer}>
               <Text style={styles.footerPrompt}>Pas encore de compte ?</Text>
-              <Pressable
+              <MotionPressable
                 onPress={() => router.push('/signup')}
                 accessibilityRole="button">
                 <Text style={styles.footerLink}>Créer un compte</Text>
-              </Pressable>
-            </View>
+              </MotionPressable>
+            </View></FadeIn>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -296,31 +285,7 @@ const styles = StyleSheet.create({
     bottom: -175,
     right: -135,
   },
-  brand: { alignItems: 'center', marginBottom: 38 },
-  brandMark: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    backgroundColor: GREEN,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-    overflow: 'hidden',
-  },
-  brandMarkLetter: { color: '#FFFFFF', fontSize: 49, lineHeight: 58, fontWeight: '800', marginTop: -3 },
-  brandWave: {
-    position: 'absolute',
-    width: 76,
-    height: 17,
-    borderTopWidth: 5,
-    borderColor: '#A8E8BF',
-    borderRadius: 20,
-    transform: [{ rotate: '-19deg' }],
-    top: 31,
-    left: -5,
-  },
-  brandName: { color: '#142039', fontSize: 36, fontWeight: '800', letterSpacing: -1.2 },
-  tagline: { color: '#252B3A', fontSize: 15, textAlign: 'center', marginTop: 5 },
+  brand: { alignItems: 'center', marginBottom: 26 },
   form: { gap: 15 },
   heading: { color: '#142039', fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: 7 },
   field: {
@@ -378,7 +343,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
   },
-  pressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
   primaryButtonText: { color: '#FFFFFF', fontSize: 19, fontWeight: '700' },
   footer: { alignItems: 'center', marginTop: 38, gap: 5 },
   footerPrompt: { color: '#252B3A', fontSize: 15 },

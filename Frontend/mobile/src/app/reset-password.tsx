@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { confirmPasswordReset } from '@/lib/session-api';
+import { BrandLockup } from '@/components/brand-lockup';
+import { FadeIn, MotionPressable } from '@/components/motion';
 
 const GREEN = '#078343';
 
@@ -51,8 +53,8 @@ export default function ResetPasswordScreen() {
       <StatusBar style="dark" />
       <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.content}>
-            <Text style={styles.brand}>StockFlow</Text>
+          <FadeIn style={styles.content}>
+            <View style={styles.brand}><BrandLockup variant="hero" tagline /></View>
             <Text style={styles.title}>{isComplete ? 'Mot de passe réinitialisé' : 'Nouveau mot de passe'}</Text>
             <Text style={styles.subtitle}>
               {isComplete
@@ -84,22 +86,22 @@ export default function ResetPasswordScreen() {
               </View>
             )}
             {!!message && <Text style={[styles.message, isComplete && styles.success]}>{message}</Text>}
-            <Pressable
+            <MotionPressable
               onPress={isComplete ? () => router.replace('/') : handleSubmit}
               disabled={isLoading}
-              style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
+              style={styles.button}>
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.buttonText}>{isComplete ? 'Retour à la connexion' : 'Réinitialiser le mot de passe'}</Text>
               )}
-            </Pressable>
+            </MotionPressable>
             {!uid || !token ? (
-              <Pressable onPress={() => router.replace('/')} style={styles.backButton}>
+              <MotionPressable onPress={() => router.replace('/')} style={styles.backButton}>
                 <Text style={styles.backText}>Retour à la connexion</Text>
-              </Pressable>
+              </MotionPressable>
             ) : null}
-          </View>
+          </FadeIn>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -110,8 +112,8 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   keyboard: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  content: { width: '100%', maxWidth: 430, alignSelf: 'center' },
-  brand: { color: GREEN, textAlign: 'center', fontSize: 26, fontWeight: '800', marginBottom: 28 },
+  content: { width: '100%', maxWidth: 430, alignSelf: 'center', backgroundColor: '#FFFFFF', padding: 24, borderRadius: 22, borderWidth: 1, borderColor: '#E3E9E4' },
+  brand: { alignItems: 'center', marginBottom: 24 },
   title: { color: '#142039', fontSize: 28, fontWeight: '700', textAlign: 'center' },
   subtitle: { color: '#596174', fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 9, marginBottom: 28 },
   form: { gap: 13 },
@@ -120,7 +122,6 @@ const styles = StyleSheet.create({
   success: { color: GREEN },
   button: { minHeight: 56, paddingHorizontal: 12, backgroundColor: GREEN, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 22 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', textAlign: 'center' },
-  pressed: { opacity: 0.85 },
   backButton: { marginTop: 14, alignItems: 'center', padding: 8 },
   backText: { color: GREEN, fontSize: 15, fontWeight: '700' },
 });

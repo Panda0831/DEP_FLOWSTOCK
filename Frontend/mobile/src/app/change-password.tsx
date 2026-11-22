@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/lib/auth-context';
 import { changeMyPassword } from '@/lib/session-api';
+import { BrandLockup } from '@/components/brand-lockup';
+import { FadeIn, MotionPressable } from '@/components/motion';
 
 const GREEN = '#078343';
 
@@ -58,8 +60,8 @@ export default function ChangePasswordScreen() {
       <StatusBar style="dark" />
       <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.content}>
-            <Text style={styles.brand}>StockFlow</Text>
+          <FadeIn style={styles.content}>
+            <View style={styles.brand}><BrandLockup variant="hero" tagline /></View>
             <Text style={styles.title}>{isComplete ? 'Mot de passe modifié' : 'Sécurisez votre compte'}</Text>
             <Text style={styles.subtitle}>
               {isComplete
@@ -101,17 +103,17 @@ export default function ChangePasswordScreen() {
               </View>
             )}
             {!!message && <Text style={styles.error}>{message}</Text>}
-            <Pressable
+            <MotionPressable
               onPress={isComplete ? () => router.replace('/home') : handleSubmit}
               disabled={isLoading}
-              style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
+              style={styles.button}>
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.buttonText}>{isComplete ? 'Continuer' : 'Modifier le mot de passe'}</Text>
               )}
-            </Pressable>
-          </View>
+            </MotionPressable>
+          </FadeIn>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -123,8 +125,8 @@ const styles = StyleSheet.create({
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
   keyboard: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  content: { width: '100%', maxWidth: 430, alignSelf: 'center' },
-  brand: { color: GREEN, textAlign: 'center', fontSize: 26, fontWeight: '800', marginBottom: 28 },
+  content: { width: '100%', maxWidth: 430, alignSelf: 'center', backgroundColor: '#FFFFFF', padding: 24, borderRadius: 22, borderWidth: 1, borderColor: '#E3E9E4' },
+  brand: { alignItems: 'center', marginBottom: 24 },
   title: { color: '#142039', fontSize: 28, fontWeight: '700', textAlign: 'center' },
   subtitle: { color: '#596174', fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 9, marginBottom: 28 },
   form: { gap: 13 },
@@ -132,5 +134,4 @@ const styles = StyleSheet.create({
   error: { color: '#A33B31', fontSize: 13, lineHeight: 18, marginTop: 14 },
   button: { height: 56, backgroundColor: GREEN, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 22 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', textAlign: 'center', paddingHorizontal: 12 },
-  pressed: { opacity: 0.85 },
 });

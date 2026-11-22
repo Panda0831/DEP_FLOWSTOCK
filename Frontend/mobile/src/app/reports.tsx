@@ -5,6 +5,8 @@ import * as Sharing from 'expo-sharing';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 import { useAuth } from '@/lib/auth-context';
 import { api, getApiBaseUrl, getSessionCookieHeaders } from '@/lib/session-api';
+import { AppPageHeading } from '@/components/page-heading';
+import { FadeIn } from '@/components/motion';
 
 type Summary = { chiffre_affaires: string; benefice_brut: string; depenses: string; benefice_net: string; commandes_livrees: number };
 type ProductReport = { idProduit__public_id: string; idProduit__nomProduit: string; quantite_vendue: number; chiffre_affaires: string; benefice_brut: string };
@@ -75,24 +77,24 @@ export default function ReportsScreen() {
   };
 
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
-    <View style={ui.pageHeading}><View style={ui.headingAccent} /><View><Text style={ui.title}>Rapports</Text><Text style={ui.subtitle}>Résultats calculés par le backend sur la période choisie.</Text></View></View>
+    <AppPageHeading title="Rapports" subtitle="Résultats calculés par le backend sur la période choisie." />
     {!admin ? <Text style={ui.error}>Les rapports financiers sont réservés aux administrateurs.</Text> : <>
-      <View style={ui.card}><Text style={ui.cardTitle}>Période</Text>
+      <FadeIn delay={130}><View style={ui.card}><Text style={ui.cardTitle}>Période</Text>
         <TextInput style={ui.input} value={start} onChangeText={setStart} placeholder="Début (AAAA-MM-JJ)" />
         <TextInput style={ui.input} value={end} onChangeText={setEnd} placeholder="Fin (AAAA-MM-JJ)" />
         <Action label={loading ? 'Chargement…' : 'Afficher le rapport'} onPress={() => void load()} disabled={loading} />
-      </View>
+      </View></FadeIn>
       {!!error && <Text style={ui.error}>{error}</Text>}
       {loading && !summary ? <ActivityIndicator color="#078343" style={{ margin: 20 }} /> : null}
       {summary && <>
-        <View style={styles.grid}>{[
+        <FadeIn delay={180}><View style={styles.grid}>{[
           ['Chiffre d’affaires', summary.chiffre_affaires], ['Bénéfice brut', summary.benefice_brut],
           ['Dépenses', summary.depenses], ['Bénéfice net', summary.benefice_net],
           ['Commandes livrées', String(summary.commandes_livrees)],
         ].map(([label, value]) => <View key={label} style={styles.metric}>
           <Text style={styles.metricLabel}>{label}</Text>
           <Text style={styles.metricValue}>{label === 'Commandes livrées' ? value : `${Number(value).toLocaleString('fr-FR')} Ar`}</Text>
-        </View>)}</View>
+        </View>)}</View></FadeIn>
         <Action label={exporting ? 'Préparation…' : 'Exporter en Excel'} onPress={() => void exportExcel()} disabled={exporting} />
         <View style={styles.chartCard}>
           <View style={styles.chartHeading}><View><Text style={ui.section}>Ventes par produit</Text><Text style={styles.chartCaption}>Chiffre d’affaires sur la période</Text></View><Text style={styles.chartUnit}>AR</Text></View>
@@ -111,7 +113,7 @@ export default function ReportsScreen() {
           {orders.length === 0 ? <Text style={ui.empty}>Aucune commande livrée sur cette période.</Text> : orders.slice(0, 6).map((item) => <View key={item.public_id} style={styles.row}>
             <View style={{ flex: 1 }}><Text style={styles.name}>{item.client}</Text><Text style={styles.sub}>{item.date_livraison}</Text></View>
             <View style={styles.orderAmount}><Text style={styles.amountValue}>{Number(item.chiffre_affaires).toLocaleString('fr-FR')} Ar</Text><Text style={styles.sub}>Bénéfice {Number(item.benefice).toLocaleString('fr-FR')} Ar</Text></View>
-          </View>)}
+        </View>)}</View></FadeIn>
         </View>
       </>}
     </>}
