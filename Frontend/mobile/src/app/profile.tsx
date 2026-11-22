@@ -2,11 +2,49 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth-context';
-import { api, changeMyPassword } from '@/lib/api';
+import { changeMyPassword, updateMyProfile } from '@/lib/session-api';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
-export default function ProfileScreen(){const router=useRouter();const{user,signIn,signOut}=useAuth();const[name,setName]=useState(user?.nom_complet||'');const[oldPassword,setOld]=useState('');const[newPassword,setNew]=useState('');const[confirm,setConfirm]=useState('');const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[message,setMessage]=useState('');
-const saveName=async()=>{setBusy(true);setError('');setMessage('');try{const updated=await api.patch<typeof user>('/auth/me/',{nom_complet:name.trim()});if(updated)signIn(updated);setMessage('Profil mis à jour.');}catch(e){setError(e instanceof Error?e.message:'Modification impossible.');}finally{setBusy(false);}};
-const savePassword=async()=>{if(newPassword!==confirm){setError('La confirmation du mot de passe ne correspond pas.');return;}setBusy(true);setError('');setMessage('');try{await changeMyPassword(oldPassword,newPassword);setOld('');setNew('');setConfirm('');setMessage('Mot de passe modifié.');}catch(e){setError(e instanceof Error?e.message:'Modification impossible.');}finally{setBusy(false);}};
-const disconnect=async()=>{setBusy(true);try{await signOut();router.replace('/');}catch(e){setError(e instanceof Error?e.message:'Déconnexion impossible.');}finally{setBusy(false);}};
-return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled"><View style={ui.top}><Pressable onPress={()=>router.back()}><Text style={ui.back}>‹ Retour</Text></Pressable><Text style={ui.brand}>FLOWSTOCK</Text></View><Text style={ui.title}>Mon compte</Text><Text style={ui.subtitle}>{user?.email} · {user?.role}</Text><View style={ui.card}><Text style={ui.cardTitle}>Informations du profil</Text><TextInput style={ui.input} value={name} onChangeText={setName} placeholder="Nom complet"/><Action label={busy?'…':'Enregistrer le profil'} onPress={()=>void saveName()} disabled={busy}/></View><View style={ui.card}><Text style={ui.cardTitle}>Changer le mot de passe</Text><TextInput style={ui.input} value={oldPassword} onChangeText={setOld} secureTextEntry placeholder="Mot de passe actuel"/><TextInput style={ui.input} value={newPassword} onChangeText={setNew} secureTextEntry placeholder="Nouveau mot de passe"/><TextInput style={ui.input} value={confirm} onChangeText={setConfirm} secureTextEntry placeholder="Confirmer le nouveau mot de passe"/><Action label={busy?'…':'Modifier le mot de passe'} onPress={()=>void savePassword()} disabled={busy}/></View>{!!error&&<Text style={ui.error}>{error}</Text>}{!!message&&<Text style={styles.success}>{message}</Text>}<Pressable onPress={()=>void disconnect()} style={styles.signOut}>{busy?<ActivityIndicator color="#B33C3C"/>:<Text style={styles.signOutText}>Se déconnecter</Text>}</Pressable></ScrollView>}
-const styles=StyleSheet.create({success:{color:'#078343',marginBottom:12,fontWeight:'600'},signOut:{alignSelf:'center',padding:14},signOutText:{color:'#B33C3C',fontWeight:'800'}});
+
+export default function ProfileScreen() {
+  const router = useRouter();
+  const { user, updateUser, signOut } = useAuth();
+  const [nomComplet, setNomComplet] = useState(user?.nom_complet ?? '');
+  const [ancien, setAncien] = useState('');
+  const [nouveau, setNouveau] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const saveProfile = async () => {
+    setBusy(true); setError(''); setNotice('');
+    try { updateUser(await updateMyProfile({ nom_complet: nomComplet.trim() })); setNotice('Profil mis à jour.'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Modification impossible.'); }
+    finally { setBusy(false); }
+  };
+  const savePassword = async () => {
+    if (!ancien || !nouveau || !confirmation) { setError('Renseignez les trois champs du mot de passe.'); return; }
+    if (nouveau !== confirmation) { setError('La confirmation ne correspond pas au nouveau mot de passe.'); return; }
+    setBusy(true); setError(''); setNotice('');
+    try { await changeMyPassword(ancien, nouveau); setAncien(''); setNouveau(''); setConfirmation(''); setNotice('Mot de passe modifié.'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Modification impossible.'); }
+    finally { setBusy(false); }
+  };
+  const disconnect = async () => { setBusy(true); setError(''); try { await signOut(); router.replace('/'); } catch (e) { setError(e instanceof Error ? e.message : 'Déconnexion impossible.'); } finally { setBusy(false); } };
+  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
+    <View style={ui.top}><Pressable onPress={() => router.back()}><Text style={ui.back}>‹ Retour</Text></Pressable><Text style={ui.brand}>FLOWSTOCK</Text></View>
+    <Text style={ui.title}>Mon compte</Text><Text style={ui.subtitle}>{user?.email} · {user?.role}</Text>
+    <View style={ui.card}><Text style={ui.cardTitle}>Informations du profil</Text>
+      <TextInput style={ui.input} value={nomComplet} onChangeText={setNomComplet} placeholder="Nom complet" />
+      <Action label={busy ? '…' : 'Enregistrer le profil'} onPress={() => void saveProfile()} disabled={busy} />
+    </View>
+    <View style={ui.card}><Text style={ui.cardTitle}>Changer le mot de passe</Text>
+      <TextInput style={ui.input} value={ancien} onChangeText={setAncien} secureTextEntry placeholder="Mot de passe actuel" />
+      <TextInput style={ui.input} value={nouveau} onChangeText={setNouveau} secureTextEntry placeholder="Nouveau mot de passe" />
+      <TextInput style={ui.input} value={confirmation} onChangeText={setConfirmation} secureTextEntry placeholder="Confirmer le nouveau mot de passe" />
+      <Action label={busy ? '…' : 'Modifier le mot de passe'} onPress={() => void savePassword()} disabled={busy} />
+    </View>
+    {!!error && <Text style={ui.error}>{error}</Text>}{!!notice && <Text style={styles.notice}>{notice}</Text>}
+    <Pressable onPress={() => void disconnect()} disabled={busy} style={styles.signOut}>{busy ? <ActivityIndicator color="#B33C3C" /> : <Text style={styles.signOutText}>Se déconnecter</Text>}</Pressable>
+  </ScrollView>;
+}
+const styles = StyleSheet.create({ notice: { color: '#078343', marginBottom: 12, fontWeight: '600' }, signOut: { alignSelf: 'center', padding: 14 }, signOutText: { color: '#B33C3C', fontWeight: '800' } });

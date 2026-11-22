@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { api, type Page, type Produit, type Stock } from '@/lib/api';
+import { api, type Page, type Produit, type Stock } from '@/lib/session-api';
 import { useAuth } from '@/lib/auth-context';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 

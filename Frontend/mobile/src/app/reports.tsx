@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { api } from '@/lib/api';
+import { api } from '@/lib/session-api';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 import { useAuth } from '@/lib/auth-context';
 type Summary={chiffre_affaires:string;benefice_brut:string;depenses:string;benefice_net:string;commandes_livrees:number};type ProductReport={idProduit__public_id:string;idProduit__nomProduit:string;quantite_vendue:number;chiffre_affaires:string;benefice_brut:string};type OrderReport={public_id:string;client:string;date_livraison:string;chiffre_affaires:string;benefice:string};

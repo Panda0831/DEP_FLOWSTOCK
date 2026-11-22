@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { confirmPasswordReset } from '@/lib/api';
+import { confirmPasswordReset } from '@/lib/session-api';
 
 const GREEN = '#078343';
 

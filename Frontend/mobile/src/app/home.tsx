@@ -4,18 +4,21 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '@/lib/auth-context';
-import { api, type Page, type Stock } from '@/lib/api';
+import { api, type Page, type Stock } from '@/lib/session-api';
 
 type Dashboard = { resume_financier: { chiffre_affaires: string; benefice_net: string; commandes_livrees: number }; alertes_stock: Stock[]; commandes_en_attente: number };
 type Pending = { public_id: string; date: string; client: string };
 const shortcuts = [
-  ['/products', 'Produits', 'Catalogue et tarifs'], ['/stock', 'Stock', 'Quantités et mouvements'], ['/orders', 'Commandes', 'Préparer une vente'], ['/clients', 'Clients', 'Fichier clients'], ['/deliveries', 'Livraisons', 'Suivre les expéditions'], ['/expenses', 'Dépenses', 'Saisir les charges'], ['/reports', 'Rapports', 'Résultats et exports'], ['/profile', 'Mon compte', 'Profil et sécurité'],
+  ['/products', 'Produits', 'Catalogue et tarifs'], ['/categories', 'Catégories', 'Classer les produits'], ['/suppliers', 'Fournisseurs', 'Gérer les approvisionneurs'], ['/stock', 'Stock', 'Quantités et mouvements'], ['/orders', 'Commandes', 'Préparer une vente'], ['/clients', 'Clients', 'Fichier clients'], ['/deliveries', 'Livraisons', 'Suivre les expéditions'], ['/expenses', 'Dépenses', 'Saisir les charges'], ['/reports', 'Rapports', 'Résultats et exports'], ['/profile', 'Mon compte', 'Profil et sécurité'],
 ] as const;
 
 export default function HomeScreen() {
-  const router = useRouter(); const { user, signOut } = useAuth();
+  const router = useRouter(); const { user, isReady, signOut } = useAuth();
   const [summary, setSummary] = useState<Dashboard | null>(null); const [pending, setPending] = useState<Pending[]>([]); const [stock, setStock] = useState<Stock[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState('');
   const isAdmin = user?.role === 'ADMIN' || user?.is_staff;
+  useEffect(() => {
+    if (isReady && !user) router.replace('/');
+  }, [isReady, router, user]);
   const refresh = useCallback(async () => {
     setLoading(true); setError('');
     try {
@@ -25,9 +28,10 @@ export default function HomeScreen() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Le tableau de bord est indisponible.'); }
     finally { setLoading(false); }
   }, [isAdmin]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { if (isReady && user) void refresh(); }, [isReady, refresh, user]);
   const disconnect = async () => { try { await signOut(); } finally { router.replace('/'); } };
 
+  if (!isReady || !user) return <SafeAreaView style={styles.safe}><ActivityIndicator color="#078343" size="large" style={{ flex: 1 }} /></SafeAreaView>;
   return <SafeAreaView style={styles.safe} edges={['top']}><StatusBar style="dark"/><ScrollView contentContainerStyle={styles.content}>
     <View style={styles.header}><View><Text style={styles.brand}>FLOWSTOCK</Text><Text style={styles.greeting}>Bonjour{user?.nom_complet ? `, ${user.nom_complet.split(' ')[0]}` : ''}</Text><Text style={styles.role}>{user?.role === 'ADMIN' ? 'Administrateur' : 'Vendeur'} · {user?.email}</Text></View><Pressable onPress={disconnect} style={styles.logout}><Text style={styles.logoutText}>Quitter</Text></Pressable></View>
     <View style={styles.hello}><Text style={styles.helloTitle}>Votre activité, en un coup d’œil</Text><Text style={styles.helloSub}>Données actualisées depuis l’API FlowStock.</Text></View>

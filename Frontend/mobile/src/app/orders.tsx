@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { api, type Client, type Commande, type Page, type Produit } from '@/lib/api';
+import { api, type Client, type Commande, type Page, type Produit } from '@/lib/session-api';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 
 export default function OrdersScreen() {

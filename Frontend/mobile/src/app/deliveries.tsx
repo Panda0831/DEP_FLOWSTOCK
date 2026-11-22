@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { api, type Commande, type Delivery, type Page } from '@/lib/api';
+import { api, type Commande, type Delivery, type Page } from '@/lib/session-api';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 export default function DeliveriesScreen(){const router=useRouter();const[orders,setOrders]=useState<Commande[]>([]);const[items,setItems]=useState<Delivery[]>([]);const[selected,setSelected]=useState('');const[busy,setBusy]=useState(false);const[loading,setLoading]=useState(true);const[error,setError]=useState('');
 const load=useCallback(async()=>{setLoading(true);setError('');try{const[d,o]=await Promise.all([api.get<Page<Delivery>|Delivery[]>('/deliveries/'),api.get<Page<Commande>|Commande[]>('/orders/')]);setItems(Array.isArray(d)?d:d.results);setOrders(Array.isArray(o)?o:o.results);}catch(e){setError(e instanceof Error?e.message:'Chargement impossible.');}finally{setLoading(false);}},[]);useEffect(()=>{void load();},[load]);

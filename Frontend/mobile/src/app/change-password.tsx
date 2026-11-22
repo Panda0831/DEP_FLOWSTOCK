@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/lib/auth-context';
-import { changeMyPassword } from '@/lib/api';
+import { changeMyPassword } from '@/lib/session-api';
 
 const GREEN = '#078343';
 

@@ -15,7 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/lib/auth-context';
-import { login, requestPasswordReset } from '@/lib/api';
+import { requestPasswordReset } from '@/lib/session-api';
 
 const GREEN = '#078343';
 
@@ -130,8 +130,7 @@ export default function HomeScreen() {
     setMessageIsSuccess(false);
     setIsLoading(true);
     try {
-      const session = await login(email.trim(), password);
-      await signIn(session);
+      await signIn(email.trim(), password);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Connexion impossible. Réessayez.');
     } finally {
@@ -252,9 +251,7 @@ export default function HomeScreen() {
             <View style={styles.footer}>
               <Text style={styles.footerPrompt}>Pas encore de compte ?</Text>
               <Pressable
-                onPress={() => {
-                  router.push('/signup');
-                }}
+                onPress={() => router.push('/signup')}
                 accessibilityRole="button">
                 <Text style={styles.footerLink}>Créer un compte</Text>
               </Pressable>

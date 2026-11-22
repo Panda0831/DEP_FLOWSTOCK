@@ -1,2 +1,2 @@
-import { ResourceScreen } from '@/components/resource-screen';
-export default function ClientsScreen() { return <ResourceScreen title="Clients" subtitle="Votre fichier clients FlowStock" endpoint="/clients/" titleKey="nomClient" subtitleKeys={['contact', 'adresse']} fields={[{ key: 'nomClient', label: 'Nom du client' }, { key: 'contact', label: 'Téléphone ou e-mail' }, { key: 'adresse', label: 'Adresse' }]} />; }
+import { ResourceScreen } from '@/components/resource-screen'; import { useAuth } from '@/lib/auth-context';
+export default function ClientsScreen() { const { user }=useAuth(); return <ResourceScreen title="Clients" subtitle="Votre fichier clients FlowStock" endpoint="/clients/" titleKey="nomClient" subtitleKeys={['contact', 'adresse']} canDelete={user?.role==='ADMIN'||!!user?.is_staff} fields={[{ key: 'nomClient', label: 'Nom du client' }, { key: 'contact', label: 'Téléphone ou e-mail' }, { key: 'adresse', label: 'Adresse' }]} />; }
