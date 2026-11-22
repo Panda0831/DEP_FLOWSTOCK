@@ -63,7 +63,7 @@ export default function ChangePasswordScreen() {
             <Text style={styles.title}>{isComplete ? 'Mot de passe modifié' : 'Sécurisez votre compte'}</Text>
             <Text style={styles.subtitle}>
               {isComplete
-                ? 'Reconnectez-vous avec votre nouveau mot de passe.'
+                ? 'Votre session reste ouverte. Vous pouvez reprendre la gestion de votre activité.'
                 : 'Choisissez un nouveau mot de passe pour continuer.'}
             </Text>
             {!isComplete && (
@@ -102,13 +102,13 @@ export default function ChangePasswordScreen() {
             )}
             {!!message && <Text style={styles.error}>{message}</Text>}
             <Pressable
-              onPress={isComplete ? () => router.replace('/') : handleSubmit}
+              onPress={isComplete ? () => router.replace('/home') : handleSubmit}
               disabled={isLoading}
               style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.buttonText}>{isComplete ? 'Retour à la connexion' : 'Modifier le mot de passe'}</Text>
+                <Text style={styles.buttonText}>{isComplete ? 'Continuer' : 'Modifier le mot de passe'}</Text>
               )}
             </Pressable>
           </View>

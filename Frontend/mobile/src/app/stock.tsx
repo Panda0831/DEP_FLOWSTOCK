@@ -1,19 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { api, type Page, type Produit, type Stock } from '@/lib/session-api';
 import { useAuth } from '@/lib/auth-context';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 
 type Movement = { public_id: string; produit: string; typeMouvement: string; quantite: number; date: string };
 export default function StockScreen() {
-  const router = useRouter(); const { user } = useAuth(); const admin = user?.role === 'ADMIN' || user?.is_staff;
+  const { user } = useAuth(); const admin = user?.role === 'ADMIN' || user?.is_staff;
   const [items, setItems] = useState<Stock[]>([]); const [moves, setMoves] = useState<Movement[]>([]); const [products, setProducts] = useState<Produit[]>([]); const [product, setProduct] = useState(''); const [quantity, setQuantity] = useState('1'); const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const load = useCallback(async () => { setLoading(true); setError(''); try { const [s,m,p] = await Promise.all([api.get<Stock[]>('/stock/'), api.get<Page<Movement> | Movement[]>('/movements/'), api.get<Page<Produit> | Produit[]>('/products/')]); setItems(s); setMoves(Array.isArray(m) ? m : m.results); setProducts(Array.isArray(p) ? p : p.results); } catch (e) { setError(e instanceof Error ? e.message : 'Chargement impossible.'); } finally { setLoading(false); } }, []);
   useEffect(() => { void load(); }, [load]);
   const adjust = async (kind: 'entries' | 'losses') => { if (!product || Number(quantity) < 1) { setError('Sélectionnez un produit et une quantité valide.'); return; } setBusy(true); setError(''); try { await api.post(`/movements/${kind}/`, { product, quantity: Number(quantity) }); setQuantity('1'); await load(); } catch (e) { setError(e instanceof Error ? e.message : 'Mouvement refusé.'); } finally { setBusy(false); } };
   return <ScrollView style={ui.page} contentContainerStyle={ui.content}>
-    <View style={ui.top}><Pressable onPress={() => router.back()}><Text style={ui.back}>‹ Retour</Text></Pressable><Text style={ui.brand}>FLOWSTOCK</Text></View><Text style={ui.title}>Stock</Text><Text style={ui.subtitle}>Niveaux disponibles, alertes et journal des mouvements</Text>
+    <View style={ui.pageHeading}><View style={ui.headingAccent} /><View><Text style={ui.title}>Stock</Text><Text style={ui.subtitle}>Niveaux disponibles, alertes et journal des mouvements</Text></View></View>
     {!!error && <Text style={ui.error}>{error}</Text>}
     {admin && <View style={ui.card}><Text style={ui.cardTitle}>Enregistrer un mouvement</Text><Text style={styles.label}>Choisir un produit</Text><ScrollView horizontal showsHorizontalScrollIndicator={false}>{products.map((p) => <Pressable key={p.public_id} onPress={() => setProduct(p.public_id)} style={[styles.product, product === p.public_id && styles.selected]}><Text style={[styles.productText, product === p.public_id && { color: '#fff' }]}>{p.nomProduit}</Text></Pressable>)}</ScrollView><TextInput value={quantity} onChangeText={setQuantity} keyboardType="number-pad" placeholder="Quantité" style={ui.input} /><View style={{ flexDirection: 'row', gap: 9 }}><Action label={busy ? '…' : 'Entrée de stock'} onPress={() => void adjust('entries')} disabled={busy} /><Pressable style={styles.loss} onPress={() => void adjust('losses')}><Text style={styles.lossText}>Enregistrer une perte</Text></Pressable></View></View>}
     <Text style={ui.section}>État du stock</Text>{loading ? <ActivityIndicator color="#078343"/> : items.map((item) => <View key={item.public_id} style={styles.row}><View style={{ flex: 1 }}><Text style={styles.name}>{item.nomProduit}</Text><Text style={styles.threshold}>Seuil d’alerte : {item.seuilAlerte}</Text></View><Text style={[styles.qty, item.stock <= item.seuilAlerte && { color: '#B63838' }]}>{item.stock}</Text></View>)}

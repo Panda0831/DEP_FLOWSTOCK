@@ -1,6 +1,6 @@
 # StockFlow Mobile
 
-Application Expo / React Native du projet StockFlow.
+Application Expo / React Native de StockFlow. Le client est relié au backend complet de `origin/main`, qui utilise l’authentification par session Django et expose les modules de catalogue, stock, ventes et finances.
 
 ## Démarrer le front
 
@@ -10,26 +10,37 @@ cp .env.example .env
 npm start
 ```
 
-Renseignez `EXPO_PUBLIC_API_URL` dans `.env` avec l’adresse du backend et le préfixe `/api/v1`. Utilisez `http://10.0.2.2:8000/api/v1` sur l’émulateur Android, ou l’adresse IP locale de l’ordinateur sur un téléphone physique. `localhost` convient au navigateur ou au simulateur iOS sur le même ordinateur. Pour Expo Go sur un téléphone, le serveur Django doit écouter sur `0.0.0.0:8000` et `ALLOWED_HOSTS` doit inclure l’adresse IP locale du PC.
+Renseignez `EXPO_PUBLIC_API_URL` avec l’adresse du backend complète, préfixée par `/api/v1` :
 
-Le backend JWT de `origin/feature/acount-module` est inclus dans ce checkout, sous `../../Bakend`. Son guide de démarrage est dans [`Bakend/README.md`](../../Bakend/README.md). Le backend complet de `origin/main` expose un contrat différent basé sur les sessions Django ; il n’est pas interchangeable avec le client JWT de cette app.
+- navigateur ou simulateur iOS sur le même ordinateur : `http://127.0.0.1:8000/api/v1`
+- émulateur Android : `http://10.0.2.2:8000/api/v1`
+- téléphone physique : `http://<adresse-IP-du-PC>:8000/api/v1`
 
-## Routes API reliées
+Pour un téléphone, Django doit écouter sur `0.0.0.0:8000` et `ALLOWED_HOSTS` doit contenir l’adresse IP du PC. Le client récupère le cookie CSRF de Django et conserve le cookie de session dans SecureStore sur mobile. Sur le web, le navigateur gère le cookie de session; l’API doit autoriser l’origine Expo avec les credentials.
 
-Toutes les routes utilisent le préfixe configuré dans `EXPO_PUBLIC_API_URL`.
+## Backend requis
 
-| Usage | Méthode et route | Contrat utilisé |
-| --- | --- | --- |
-| Connexion | `POST /auth/login/` | `email`, `mot_de_passe`; renvoie `access`, `refresh`, `utilisateur` |
-| Profil / restauration de session | `GET /auth/me/` | En-tête `Authorization: Bearer <access>` |
-| Renouvellement JWT | `POST /auth/token/refresh/` | `refresh`; renvoie la nouvelle paire de jetons |
-| Déconnexion | `POST /auth/logout/` | Bearer access + corps `{ "refresh": "…" }` |
-| Demande de réinitialisation | `POST /auth/password/reset/request/` | `email`; réponse générique pour ne pas révéler si le compte existe |
-| Confirmation de réinitialisation | `POST /auth/password/reset/confirm/` | `uid`, `token`, `nouveau_mot_de_passe`, `confirmation_nouveau_mot_de_passe` |
-| Changement obligatoire du mot de passe | `POST /auth/password/change/` | `ancien_mot_de_passe`, `nouveau_mot_de_passe`, `confirmation_nouveau_mot_de_passe` |
+Le dossier `../../Bakend` de cette branche contient le module de comptes JWT de `origin/feature/acount-module`. Il n’expose pas les routes de produits, stock, commandes, livraisons ou finances et son authentification est incompatible avec ce client. Depuis la racine du dépôt, créez un checkout séparé du backend complet :
 
-Les jetons sont enregistrés dans SecureStore sur iOS/Android et dans `sessionStorage` sur le web. Une session existante est restaurée avec `/auth/me/`; si l’access a expiré, le front appelle `/auth/token/refresh/`.
+```bash
+git worktree add ../FlowStock-backend-main origin/main
+cd ../FlowStock-backend-main/Bakend
+```
 
-La branche `feature/acount-module` ne propose pas d’inscription publique : `POST /users/` est réservé aux administrateurs. Le lien « Demander un accès » l’indique donc à l’utilisateur. Pour que les liens reçus ouvrent la route `/reset-password?uid=…&token=…`, configurez `URL_FRONTEND_REINITIALISATION` dans le backend (par exemple `flowstock://reset-password` pour une app installée, ou une URL web de développement). En développement, le backend écrit les liens dans sa sortie console selon sa configuration e-mail.
+Suivez le guide `Bakend/README.md` de ce checkout pour configurer et démarrer Django. L’URL configurée dans `.env` doit pointer vers ce serveur complet.
 
-Pour le web, le navigateur exige que le backend autorise l’origine Expo via CORS. Expo Go sur iOS/Android n’est pas soumis à cette restriction du navigateur.
+## Routes utilisées
+
+Toutes les routes ci-dessous sont relatives au préfixe `/api/v1`.
+
+| Fonction | Routes |
+| --- | --- |
+| Comptes | `POST /auth/signup/`, `POST /auth/login/`, `POST /auth/logout/`, `GET/PATCH /auth/me/` |
+| Mots de passe | `POST /auth/password/change/`, `POST /auth/password/reset/request/`, `POST /auth/password/reset/confirm/` |
+| Catalogue | CRUD `/products/`, `/categories/`, `/suppliers/` |
+| Clients et ventes | CRUD `/clients/`, `/orders/`; actions `POST /orders/{id}/confirm/` et `/orders/{id}/cancel/` |
+| Stock | `GET /stock/`, `GET /stock/alerts/`, `GET /movements/`, `POST /movements/entries/`, `POST /movements/losses/` |
+| Livraisons | CRUD `/deliveries/`; actions `POST /deliveries/{id}/mark-delivered/` et `POST /deliveries/{id}/mark-failed/` |
+| Finances | CRUD `/expenses/`; tableaux de bord `/dashboard/summary/`, `/dashboard/pending-orders/`; rapports `/reports/summary/`, `/reports/products/`, `/reports/orders/`; export `/exports/excel/` |
+
+Le backend applique les permissions par rôle. Les formulaires du front limitent les actions d’administration, et le serveur reste l’autorité pour chaque permission.

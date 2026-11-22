@@ -31,8 +31,7 @@ export default function ProfileScreen() {
   };
   const disconnect = async () => { setBusy(true); setError(''); try { await signOut(); router.replace('/'); } catch (e) { setError(e instanceof Error ? e.message : 'Déconnexion impossible.'); } finally { setBusy(false); } };
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
-    <View style={ui.top}><Pressable onPress={() => router.back()}><Text style={ui.back}>‹ Retour</Text></Pressable><Text style={ui.brand}>FLOWSTOCK</Text></View>
-    <Text style={ui.title}>Mon compte</Text><Text style={ui.subtitle}>{user?.email} · {user?.role}</Text>
+    <View style={ui.pageHeading}><View style={ui.headingAccent}/><View><Text style={ui.title}>Mon compte</Text><Text style={ui.subtitle}>{user?.email} · {user?.role}</Text></View></View>
     <View style={ui.card}><Text style={ui.cardTitle}>Informations du profil</Text>
       <TextInput style={ui.input} value={nomComplet} onChangeText={setNomComplet} placeholder="Nom complet" />
       <Action label={busy ? '…' : 'Enregistrer le profil'} onPress={() => void saveProfile()} disabled={busy} />
