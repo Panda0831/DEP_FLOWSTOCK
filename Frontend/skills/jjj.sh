@@ -1,0 +1,1 @@
+et faire tous les front du projet au complet en lisant le cahier des charges dans le docs et voir aussi les API dans le backend dans l'autre branche

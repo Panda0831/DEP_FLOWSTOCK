@@ -1,56 +1,35 @@
-# Welcome to your Expo app 👋
+# StockFlow Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Application Expo / React Native du projet StockFlow.
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Démarrer le front
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env
+npm start
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+Renseignez `EXPO_PUBLIC_API_URL` dans `.env` avec l’adresse du backend et le préfixe `/api/v1`. Utilisez `http://10.0.2.2:8000/api/v1` sur l’émulateur Android, ou l’adresse IP locale de l’ordinateur sur un téléphone physique. `localhost` convient au navigateur ou au simulateur iOS sur le même ordinateur. Pour Expo Go sur un téléphone, le serveur Django doit écouter sur `0.0.0.0:8000` et `ALLOWED_HOSTS` doit inclure l’adresse IP locale du PC.
 
-### Other setup steps
+Le backend JWT de `origin/feature/acount-module` est inclus dans ce checkout, sous `../../Bakend`. Son guide de démarrage est dans [`Bakend/README.md`](../../Bakend/README.md). Le backend complet de `origin/main` expose un contrat différent basé sur les sessions Django ; il n’est pas interchangeable avec le client JWT de cette app.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Routes API reliées
 
-## Learn more
+Toutes les routes utilisent le préfixe configuré dans `EXPO_PUBLIC_API_URL`.
 
-To learn more about developing your project with Expo, look at the following resources:
+| Usage | Méthode et route | Contrat utilisé |
+| --- | --- | --- |
+| Connexion | `POST /auth/login/` | `email`, `mot_de_passe`; renvoie `access`, `refresh`, `utilisateur` |
+| Profil / restauration de session | `GET /auth/me/` | En-tête `Authorization: Bearer <access>` |
+| Renouvellement JWT | `POST /auth/token/refresh/` | `refresh`; renvoie la nouvelle paire de jetons |
+| Déconnexion | `POST /auth/logout/` | Bearer access + corps `{ "refresh": "…" }` |
+| Demande de réinitialisation | `POST /auth/password/reset/request/` | `email`; réponse générique pour ne pas révéler si le compte existe |
+| Confirmation de réinitialisation | `POST /auth/password/reset/confirm/` | `uid`, `token`, `nouveau_mot_de_passe`, `confirmation_nouveau_mot_de_passe` |
+| Changement obligatoire du mot de passe | `POST /auth/password/change/` | `ancien_mot_de_passe`, `nouveau_mot_de_passe`, `confirmation_nouveau_mot_de_passe` |
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Les jetons sont enregistrés dans SecureStore sur iOS/Android et dans `sessionStorage` sur le web. Une session existante est restaurée avec `/auth/me/`; si l’access a expiré, le front appelle `/auth/token/refresh/`.
 
-## Join the community
+La branche `feature/acount-module` ne propose pas d’inscription publique : `POST /users/` est réservé aux administrateurs. Le lien « Demander un accès » l’indique donc à l’utilisateur. Pour que les liens reçus ouvrent la route `/reset-password?uid=…&token=…`, configurez `URL_FRONTEND_REINITIALISATION` dans le backend (par exemple `flowstock://reset-password` pour une app installée, ou une URL web de développement). En développement, le backend écrit les liens dans sa sortie console selon sa configuration e-mail.
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Pour le web, le navigateur exige que le backend autorise l’origine Expo via CORS. Expo Go sur iOS/Android n’est pas soumis à cette restriction du navigateur.

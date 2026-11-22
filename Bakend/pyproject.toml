@@ -1,0 +1,34 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+addopts = "--strict-markers --strict-config"
+
+[tool.coverage.run]
+branch = true
+source = ["apps.accounts", "apps.core"]
+omit = ["apps/**/tests/**", "apps/**/migrations/**", "apps/conftest.py"]
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["."]
+exclude = ["PROMPT_module_utilisateur_StockFlow.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DJ", "S"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"apps/**/tests/*.py" = ["S105", "S106"]
+"apps/**/migrations/*.py" = ["E501"]
+
+[tool.bandit]
+exclude_dirs = [
+    "apps/accounts/tests",
+    "apps/accounts/migrations",
+    "apps/core/tests",
+]
