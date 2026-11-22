@@ -8,7 +8,7 @@ import { FadeIn, MotionPressable } from '@/components/motion';
 const primaryLinks = [
   { label: 'Accueil', shortLabel: 'Accueil', href: '/home', matches: ['/home'], icon: { ios: 'house.fill', android: 'home', web: 'home' } },
   { label: 'Catalogue', shortLabel: 'Catalogue', href: '/products', matches: ['/products', '/categories', '/suppliers'], icon: { ios: 'square.grid.2x2.fill', android: 'grid_view', web: 'grid_view' } },
-  { label: 'Activité', shortLabel: 'Activité', href: '/orders', matches: ['/orders', '/clients', '/deliveries', '/stock'], icon: { ios: 'arrow.left.arrow.right', android: 'swap_horiz', web: 'swap_horiz' } },
+  { label: 'Activité', shortLabel: 'Activité', href: '/orders', matches: ['/orders', '/clients', '/deliveries', '/stock', '/purchases'], icon: { ios: 'arrow.left.arrow.right', android: 'swap_horiz', web: 'swap_horiz' } },
   { label: 'Finances', shortLabel: 'Finances', href: '/reports', matches: ['/reports', '/expenses'], admin: true, icon: { ios: 'chart.bar.fill', android: 'bar_chart', web: 'bar_chart' } },
   { label: 'Compte', shortLabel: 'Compte', href: '/profile', matches: ['/profile', '/change-password'], icon: { ios: 'person.crop.circle.fill', android: 'account_circle', web: 'account_circle' } },
 ] as const;
@@ -22,6 +22,7 @@ const sectionLinks = [
   { label: 'Commandes', href: '/orders', group: 'Activité', admin: false },
   { label: 'Clients', href: '/clients', group: 'Activité', admin: false },
   { label: 'Livraisons', href: '/deliveries', group: 'Activité', admin: false },
+  { label: 'Achats', href: '/purchases', group: 'Activité', admin: true },
   { label: 'Dépenses', href: '/expenses', group: 'Finances', admin: true },
   { label: 'Rapports', href: '/reports', group: 'Finances', admin: true },
   { label: 'Mon compte', href: '/profile', group: 'Compte', admin: false },

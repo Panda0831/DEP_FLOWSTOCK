@@ -4,6 +4,8 @@ import { AppleMaps, GoogleMaps } from 'expo-maps';
 import * as Location from 'expo-location';
 import type { DeliveryMapPoint } from './delivery-location-map.types';
 
+export type { DeliveryMapPoint } from './delivery-location-map.types';
+
 type Coordinates = { latitude: number; longitude: number };
 type SelectedLocation = { coordinates: Coordinates; title: string; address: string; detail: string };
 

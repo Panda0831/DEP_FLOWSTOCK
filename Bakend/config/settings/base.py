@@ -1,33 +1,19 @@
-"""Configuration commune de Django et de l’API StockFlow."""
+"""Configuration commune à tous les environnements."""
 
-from datetime import timedelta
 from pathlib import Path
 
 import environ
 
-BASE_DIR = Path(__file__).resolve().parents[2]
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env()
-env.read_env(BASE_DIR / ".env")
+environ.Env.read_env(BASE_DIR / ".env")
 
-SECRET_KEY = env("SECRET_KEY")
-JWT_CLE_SIGNATURE = env("JWT_CLE_SIGNATURE")
-if len(JWT_CLE_SIGNATURE) < 50 or JWT_CLE_SIGNATURE == SECRET_KEY:
-    raise ValueError("JWT_CLE_SIGNATURE doit être distincte et contenir au moins 50 caractères.")
-
-DEBUG = env.bool("DEBUG", default=False)
+SECRET_KEY = env("DJANGO_SECRET_KEY")
+DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
-NOMBRE_PROXIES_DE_CONFIANCE = env.int("NOMBRE_PROXIES_DE_CONFIANCE", default=0)
-if NOMBRE_PROXIES_DE_CONFIANCE < 0:
-    raise ValueError("NOMBRE_PROXIES_DE_CONFIANCE ne peut pas être négatif.")
-LANGUAGE_CODE = "fr"
-TIME_ZONE = "Indian/Antananarivo"
-USE_I18N = True
-USE_TZ = True
-ROOT_URLCONF = "config.urls"
-WSGI_APPLICATION = "config.wsgi.application"
-ASGI_APPLICATION = "config.asgi.application"
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-AUTH_USER_MODEL = "accounts.Utilisateur"
+ACTIVER_DOCUMENTATION_API = env.bool("ACTIVER_DOCUMENTATION_API", default=DEBUG)
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -36,30 +22,38 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django.contrib.postgres",
+    "corsheaders",
     "rest_framework",
-    "rest_framework_simplejwt.token_blacklist",
-    "django_filters",
     "drf_spectacular",
-    "apps.core",
+    "axes",
     "apps.accounts",
+    "apps.catalog",
+    "apps.inventory",
+    "apps.sales",
+    "apps.finance",
+    "apps.purchasing",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "apps.core.middleware.CacheNoStoreMiddleware",
+    "axes.middleware.AxesMiddleware",
 ]
+
+ROOT_URLCONF = "config.urls"
+WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -68,164 +62,104 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
             ],
         },
-    },
+    }
 ]
 
-if env.str("BASE_DE_DONNEES_URL", default=""):
-    DATABASES = {"default": env.db_url("BASE_DE_DONNEES_URL")}
-    if not DATABASES["default"]["ENGINE"].endswith("postgresql"):
-        raise ValueError("BASE_DE_DONNEES_URL doit utiliser PostgreSQL.")
+if env.str("DATABASE_URL", default=""):
+    DATABASES = {"default": env.db_url("DATABASE_URL")}
+    DATABASES["default"]["CONN_MAX_AGE"] = 60
 else:
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "HOST": env("BDD_HOTE"),
-            "PORT": env("BDD_PORT", default="5432"),
-            "NAME": env("BDD_NOM"),
-            "USER": env("BDD_UTILISATEUR"),
-            "PASSWORD": env("BDD_MOT_DE_PASSE"),
-            "CONN_MAX_AGE": 60,
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / env("SQLITE_NAME", default="db.sqlite3"),
         }
     }
 
+AUTH_USER_MODEL = "accounts.User"
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.Argon2PasswordHasher"]
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-        "OPTIONS": {"user_attributes": ("email", "nom", "prenom")},
-    },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
         "OPTIONS": {"min_length": 12},
     },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
-    {
-        "NAME": "apps.core.validators.LongueurMaximaleMotDePasseValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-PASSWORD_HASHERS = [
-    "django.contrib.auth.hashers.Argon2PasswordHasher",
-    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
-]
-PASSWORD_RESET_TIMEOUT = 3600
-
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ],
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-        "apps.accounts.permissions.ChangementMotDePasseNonRequis",
-    ],
-    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
-    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
-    "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.PaginationStandard",
-    "DEFAULT_FILTER_BACKENDS": [
-        "django_filters.rest_framework.DjangoFilterBackend",
-        "rest_framework.filters.SearchFilter",
-        "rest_framework.filters.OrderingFilter",
-    ],
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "EXCEPTION_HANDLER": "apps.core.exceptions.gestionnaire_exceptions",
-    "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
-    ],
-    "DEFAULT_THROTTLE_RATES": {
-        "anon": "30/min",
-        "user": "120/min",
-        "connexion": "10/min",
-        "connexion_par_email": "5/15min",
-        "rafraichissement": "30/min",
-        "deconnexion": "30/min",
-        "creation_utilisateur": "30/min",
-        "reinitialisation_demande": "5/hour",
-        "reinitialisation_demande_par_email": "3/hour",
-        "reinitialisation_confirmation": "10/hour",
-        "changement_mot_de_passe": "5/hour",
-    },
-    "NUM_PROXIES": NOMBRE_PROXIES_DE_CONFIANCE,
-}
-
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
-    "UPDATE_LAST_LOGIN": False,
-    "ALGORITHM": "HS256",
-    "SIGNING_KEY": JWT_CLE_SIGNATURE,
-    "AUTH_HEADER_TYPES": ("Bearer",),
-    "USER_ID_FIELD": "uuid",
-    "USER_ID_CLAIM": "utilisateur_uuid",
-}
-
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "stockflow-dev",
-    }
-}
-
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = env("EMAIL_HOST", default="localhost")
-EMAIL_PORT = env.int("EMAIL_PORT", default=25)
-EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
-EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
-DEFAULT_FROM_EMAIL = env("EMAIL_FROM", default="StockFlow <noreply@localhost>")
-URL_FRONTEND_REINITIALISATION = env("URL_FRONTEND_REINITIALISATION", default="")
-ACTIVER_DOCUMENTATION_API = env.bool("ACTIVER_DOCUMENTATION_API", default=False)
+LANGUAGE_CODE = "fr-fr"
+TIME_ZONE = "UTC"
+USE_I18N = True
+USE_TZ = True
 
 STATIC_URL = "static/"
-LOGIN_URL = "/admin/login/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SAMESITE = "Lax"
-SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_REFERRER_POLICY = "same-origin"
-X_FRAME_OPTIONS = "DENY"
+SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=28800)
+SESSION_SAVE_EVERY_REQUEST = True
+
+# A same-origin deployment needs no CORS configuration.  When the web client is
+# hosted separately, list its exact HTTPS origins in the environment.
+CORS_ALLOW_CREDENTIALS = bool(CORS_ALLOWED_ORIGINS)
+
+AXES_ENABLED = env.bool("AXES_ENABLED", default=True)
+AXES_FAILURE_LIMIT = env.int("AXES_FAILURE_LIMIT", default=5)
+AXES_COOLOFF_TIME = env.int("AXES_COOLOFF_MINUTES", default=15)
+AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+AXES_RESET_ON_SUCCESS = True
+
+PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=3600)
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@example.com")
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "API StockFlow",
-    "DESCRIPTION": "API de gestion des comptes et de l’authentification StockFlow.",
+    "TITLE": "FlowStock API",
+    "DESCRIPTION": (
+        "API de gestion des comptes, du catalogue, du stock, des ventes et des finances."
+    ),
     "VERSION": "1.0.0",
-    "LANGUAGE_CODE": "fr",
-    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "securite": {
+        "standard": {
             "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
-        },
+        }
     },
     "handlers": {
-        "console": {
+        "security": {
             "class": "logging.StreamHandler",
-            "formatter": "securite",
-        },
-        "fichier_securite": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": str(BASE_DIR / "logs" / "securite.log"),
-            "maxBytes": 5_000_000,
-            "backupCount": 5,
-            "encoding": "utf-8",
-            "formatter": "securite",
-        },
+            "formatter": "standard",
+        }
     },
     "loggers": {
-        "stockflow.securite": {
-            "handlers": ["console", "fichier_securite"],
+        "security": {
+            "handlers": ["security"],
             "level": "INFO",
             "propagate": False,
-        },
+        }
     },
 }
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

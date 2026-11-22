@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api, type Client, type Commande, type Delivery, type Page } from '@/lib/session-api';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
@@ -11,6 +11,9 @@ export default function DeliveriesScreen() {
   const [clients, setClients] = useState<Client[]>([]);
   const [items, setItems] = useState<Delivery[]>([]);
   const [selected, setSelected] = useState('');
+  const [address, setAddress] = useState('');
+  const [cost, setCost] = useState('0');
+  const [charged, setCharged] = useState('0');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,8 +44,8 @@ export default function DeliveriesScreen() {
     setBusy(true);
     setError('');
     try {
-      await api.post('/deliveries/', { commande: selected });
-      setSelected('');
+      await api.post('/deliveries/', { commande: selected, adresse: address, cout: Number(cost), fraisFacture: Number(charged) });
+      setSelected(''); setAddress(''); setCost('0'); setCharged('0');
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Création impossible.');
@@ -51,7 +54,7 @@ export default function DeliveriesScreen() {
     }
   };
 
-  const mark = async (id: string, action: 'mark-delivered' | 'mark-failed') => {
+  const mark = async (id: string, action: 'mark-preparing' | 'mark-shipped' | 'mark-delivered' | 'mark-failed' | 'retry' | 'mark-returned') => {
     setBusy(true);
     setError('');
     try { await api.post(`/deliveries/${id}/${action}/`); await load(); }
@@ -68,12 +71,12 @@ export default function DeliveriesScreen() {
       const client = clients.find((item) => item.public_id === order?.client);
       const latitude = Number(client?.latitude);
       const longitude = Number(client?.longitude);
-      const address = client?.adresse?.trim() || '';
-      if (!address && (!Number.isFinite(latitude) || !Number.isFinite(longitude))) continue;
+      const deliveryAddress = delivery.adresse?.trim() || client?.adresse?.trim() || '';
+      if (!deliveryAddress && (!Number.isFinite(latitude) || !Number.isFinite(longitude))) continue;
       points.push({
         id: delivery.public_id,
         title: `Commande ${delivery.commande.slice(0, 8)}`,
-        address,
+        address: deliveryAddress,
         detail: `${delivery.statut.replace('_', ' ')} · ${Number(delivery.fraisFacture).toLocaleString('fr-FR')} Ar facturés`,
         latitude: Number.isFinite(latitude) ? latitude : undefined,
         longitude: Number.isFinite(longitude) ? longitude : undefined,
@@ -92,6 +95,8 @@ export default function DeliveriesScreen() {
             <Text style={[styles.choiceText, selected === order.public_id && styles.choiceTextSelected]}>Commande {order.public_id.slice(0, 8)}</Text>
           </MotionPressable>)}
         </ScrollView> : <Text style={styles.helper}>Aucune commande confirmée en attente de livraison.</Text>}
+        <TextInput style={ui.input} value={address} onChangeText={setAddress} placeholder="Adresse de livraison (facultatif)" />
+        <View style={styles.amountInputs}><TextInput style={[ui.input, styles.amountInput]} value={cost} onChangeText={setCost} keyboardType="decimal-pad" placeholder="Coût réel (Ar)" /><TextInput style={[ui.input, styles.amountInput]} value={charged} onChangeText={setCharged} keyboardType="decimal-pad" placeholder="Frais facturés (Ar)" /></View>
         <Action label={busy ? 'Création…' : 'Créer le suivi'} onPress={() => void create()} disabled={busy || !availableOrders.length} />
       </View>
     </FadeIn>
@@ -100,13 +105,16 @@ export default function DeliveriesScreen() {
     <View style={styles.sectionHeading}><Text style={ui.section}>Suivi des livraisons</Text><MotionPressable onPress={() => void load()}><Text style={ui.refresh}>Actualiser</Text></MotionPressable></View>
     {loading ? <ActivityIndicator color="#078343" style={{ marginVertical: 24 }} /> : items.length === 0 ? <Text style={ui.empty}>Aucune livraison enregistrée.</Text> : items.map((delivery, index) => <FadeIn key={delivery.public_id} delay={Math.min(index * 40, 280)}>
       <View style={styles.row}>
-        <View style={styles.deliveryTop}><Text style={styles.name}>Commande {orderName(delivery.commande)}</Text><Text style={[styles.status, delivery.statut === 'livree' && styles.statusDone]}>{delivery.statut.replace('_', ' ')}</Text></View>
+        <View style={styles.deliveryTop}><View><Text style={styles.name}>{delivery.reference_commande || `Commande ${orderName(delivery.commande)}`}</Text><Text style={styles.detail}>{delivery.client}</Text></View><Text style={[styles.status, delivery.statut === 'livree' && styles.statusDone]}>{delivery.statut.replaceAll('_', ' ')}</Text></View>
+        {!!delivery.adresse && <Text style={styles.detail}>Adresse : {delivery.adresse}</Text>}
+        {!!delivery.dateExpedition && <Text style={styles.detail}>Expédiée le : {delivery.dateExpedition}</Text>}
         <Text style={styles.detail}>Date : {delivery.dateLivraison || 'à définir'}</Text>
         <View style={styles.amounts}><Text style={styles.amount}>Coût {delivery.cout} Ar</Text><Text style={styles.amount}>Facturé {delivery.fraisFacture} Ar</Text></View>
-        {delivery.statut === 'en_cours' && <View style={styles.actions}>
-          <Action label={busy ? '…' : 'Marquer livrée'} onPress={() => void mark(delivery.public_id, 'mark-delivered')} disabled={busy} />
-          <MotionPressable onPress={() => void mark(delivery.public_id, 'mark-failed')} disabled={busy} style={styles.failButton}><Text style={styles.failText}>Échec</Text></MotionPressable>
-        </View>}
+        {delivery.statut === 'en_cours' && <View style={styles.actions}><Action label="Préparer" onPress={() => void mark(delivery.public_id, 'mark-preparing')} disabled={busy} /><MotionPressable onPress={() => void mark(delivery.public_id, 'mark-failed')} disabled={busy} style={styles.failButton}><Text style={styles.failText}>Échec</Text></MotionPressable></View>}
+        {delivery.statut === 'en_preparation' && <View style={styles.actions}><Action label="Marquer expédiée" onPress={() => void mark(delivery.public_id, 'mark-shipped')} disabled={busy} /><MotionPressable onPress={() => void mark(delivery.public_id, 'mark-failed')} disabled={busy} style={styles.failButton}><Text style={styles.failText}>Échec</Text></MotionPressable></View>}
+        {delivery.statut === 'expediee' && <View style={styles.actions}><Action label="Marquer livrée" onPress={() => void mark(delivery.public_id, 'mark-delivered')} disabled={busy} /><MotionPressable onPress={() => void mark(delivery.public_id, 'mark-failed')} disabled={busy} style={styles.failButton}><Text style={styles.failText}>Échec</Text></MotionPressable></View>}
+        {delivery.statut === 'echec' && <View style={styles.actions}><Action label="Relancer la livraison" onPress={() => void mark(delivery.public_id, 'retry')} disabled={busy} /></View>}
+        {delivery.statut === 'livree' && <View style={styles.actions}><MotionPressable onPress={() => void mark(delivery.public_id, 'mark-returned')} disabled={busy} style={styles.failButton}><Text style={styles.failText}>Enregistrer un retour</Text></MotionPressable></View>}
       </View>
     </FadeIn>)}
   </ScrollView>;
@@ -114,6 +122,8 @@ export default function DeliveriesScreen() {
 
 const styles = StyleSheet.create({
   choices: { gap: 8, paddingBottom: 12 },
+  amountInputs: { flexDirection: 'row', gap: 9 },
+  amountInput: { flex: 1, minWidth: 0 },
   choice: { paddingVertical: 10, paddingHorizontal: 13, borderRadius: 11, backgroundColor: '#F0F4F1' },
   selected: { backgroundColor: '#078343' },
   choiceText: { color: '#36443A', fontSize: 12, fontWeight: '700' },

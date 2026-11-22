@@ -1,6 +1,8 @@
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { DeliveryMapPoint } from './delivery-location-map.types';
 
+export type { DeliveryMapPoint } from './delivery-location-map.types';
+
 function getMapUrl(point: DeliveryMapPoint) {
   const hasCoordinates = Number.isFinite(point.latitude) && Number.isFinite(point.longitude);
   if (hasCoordinates) {

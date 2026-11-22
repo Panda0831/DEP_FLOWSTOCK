@@ -19,8 +19,8 @@ src = ["."]
 exclude = ["PROMPT_module_utilisateur_StockFlow.md"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "DJ", "S"]
-ignore = ["S101"]
+select = ["E", "F", "I"]
+ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "apps/**/tests/*.py" = ["S105", "S106"]

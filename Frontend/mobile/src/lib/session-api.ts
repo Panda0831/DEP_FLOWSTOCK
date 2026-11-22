@@ -7,11 +7,15 @@ export type Produit = { public_id: string; nomProduit: string; prixVente: string
 export type Categorie = { public_id: string; nomCategorie: string };
 export type Fournisseur = { public_id: string; nomFournisseur: string };
 export type Client = { public_id: string; nomClient: string; contact: string; adresse: string; latitude?: number | string; longitude?: number | string };
-export type Commande = { public_id: string; client: string; date: string; statut: string; lignes: { product: string; quantite: number; prixUnitaire: string; coutUnitaire?: string }[] };
+export type Commande = { public_id: string; reference: string; client: string; date: string; statut: string; remise: string; fraisLivraison: string; montant_total: string; montant_paye: string; solde_restant: string; paiements: Payment[]; lignes: { product: string; quantite: number; prixUnitaire: string; coutUnitaire?: string }[] };
 export type Stock = { public_id: string; nomProduit: string; stock: number; seuilAlerte: number };
-export type Movement = { public_id: string; produit: string; typeMouvement: string; quantite: number; date: string };
-export type Delivery = { public_id: string; commande: string; dateLivraison: string | null; statut: string; cout: string; fraisFacture: string };
+export type Movement = { public_id: string; produit: string; typeMouvement: string; quantite: number; date: string; motif: string; referenceOperation: string };
+export type Delivery = { public_id: string; commande: string; reference_commande: string; client: string; adresse: string; commentaire: string; dateExpedition: string | null; dateLivraison: string | null; statut: string; cout: string; fraisFacture: string };
 export type Expense = { public_id: string; date: string; libelle: string; montant: string };
+export type Payment = { public_id: string; commande: string | null; achat: string | null; reference_commande: string | null; reference_achat: string | null; montant: string; typePaiement: 'versement' | 'remboursement'; date: string; mode: string; reference: string; commentaire: string };
+export type PurchaseLine = { product: string; nomProduit: string; quantite: number; quantite_recue: number; quantite_retournee: number; prixUnitaire: string };
+export type PurchaseReception = { public_id: string; reference: string; achat: string; date: string; lieu: string; commentaire: string; lignes: { product: string; nomProduit: string; quantite: number }[] };
+export type Purchase = { public_id: string; reference: string; supplier: string; nomFournisseur: string; dateCommande: string; lieuAchat: string; modeObtention: 'commande' | 'achat_direct'; statut: string; statut_paiement: 'non_paye' | 'partiellement_paye' | 'paye'; lignes: PurchaseLine[]; receptions: PurchaseReception[]; paiements: Payment[]; historique: { evenement: string; date: string; utilisateur: string; referenceOperation: string; details: Record<string, unknown> }[]; montant_total: string; montant_paye: string; solde_restant: string };
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); this.name = 'ApiError'; }

@@ -20,14 +20,10 @@ Pour un téléphone, Django doit écouter sur `0.0.0.0:8000` et `ALLOWED_HOSTS` 
 
 ## Backend requis
 
-Le dossier `../../Bakend` de cette branche contient le module de comptes JWT de `origin/feature/acount-module`. Il n’expose pas les routes de produits, stock, commandes, livraisons ou finances et son authentification est incompatible avec ce client. Depuis la racine du dépôt, créez un checkout séparé du backend complet :
-
-```bash
-git worktree add ../FlowStock-backend-main origin/main
-cd ../FlowStock-backend-main/Bakend
-```
-
-Suivez le guide `Bakend/README.md` de ce checkout pour configurer et démarrer Django. L’URL configurée dans `.env` doit pointer vers ce serveur complet.
+Le dossier `../../Bakend` expose les modules de comptes, catalogue, stock,
+achats, ventes, livraisons et paiements. Suivez `Bakend/README.md` pour
+installer les dépendances et démarrer l'API. L’URL configurée dans `.env` doit
+pointer vers ce serveur et se terminer par `/api/v1`.
 
 ## Routes utilisées
 
@@ -40,7 +36,9 @@ Toutes les routes ci-dessous sont relatives au préfixe `/api/v1`.
 | Catalogue | CRUD `/products/`, `/categories/`, `/suppliers/` |
 | Clients et ventes | CRUD `/clients/`, `/orders/`; actions `POST /orders/{id}/confirm/` et `/orders/{id}/cancel/` |
 | Stock | `GET /stock/`, `GET /stock/alerts/`, `GET /movements/`, `POST /movements/entries/`, `POST /movements/losses/` |
-| Livraisons | CRUD `/deliveries/`; actions `POST /deliveries/{id}/mark-delivered/` et `POST /deliveries/{id}/mark-failed/` |
+| Paiements | Paiements partiels pour commandes et achats via `POST /payments/` |
+| Achats | `GET/POST /purchases/`, réception partielle `/purchases/{id}/receive/`, historique `/purchase-receptions/` |
+| Livraisons | CRUD `/deliveries/`; actions de préparation, expédition, livraison, échec/reprise et retour |
 | Finances | CRUD `/expenses/`; tableaux de bord `/dashboard/summary/`, `/dashboard/pending-orders/`; rapports `/reports/summary/`, `/reports/products/`, `/reports/orders/`; export `/exports/excel/` |
 
 Le backend applique les permissions par rôle. Les formulaires du front limitent les actions d’administration, et le serveur reste l’autorité pour chaque permission.

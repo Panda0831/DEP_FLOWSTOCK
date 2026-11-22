@@ -1,92 +1,23 @@
-"""Gestion sécurisée de la création des comptes utilisateurs."""
-
-from typing import Any
-
-from django.contrib.auth.base_user import BaseUserManager
-from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.models import BaseUserManager
 
 
-class UtilisateurManager(BaseUserManager):
-    """Crée des utilisateurs avec e-mail normalisé et mot de passe haché."""
+class UserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("L'adresse e-mail est obligatoire")
+        email = self.normalize_email(email).strip().lower()
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
 
-    use_in_migrations = True
-
-    def creer_utilisateur(
-        self,
-        email: str,
-        mot_de_passe: str,
-        nom: str,
-        prenom: str,
-        telephone: str = "",
-        role: str = "vendeur",
-        **champs: Any,
-    ):
-        """Crée un utilisateur ordinaire après validation du mot de passe."""
-        from apps.accounts.models import Utilisateur
-
-        adresse = self.normalize_email(email).strip().lower()
-        utilisateur = Utilisateur(
-            email=adresse,
-            nom=nom,
-            prenom=prenom,
-            telephone=telephone,
-            role=role,
-            **champs,
-        )
-        utilisateur.set_password(mot_de_passe)
-        validate_password(mot_de_passe, utilisateur)
-        utilisateur.save(using=self._db)
-        return utilisateur
-
-    def creer_superutilisateur(
-        self,
-        email: str,
-        mot_de_passe: str,
-        nom: str,
-        prenom: str,
-        **champs: Any,
-    ):
-        """Crée un super-utilisateur toujours associé au rôle API administrateur."""
-        champs.pop("role", None)
-        champs["is_superuser"] = True
-        champs["is_active"] = True
-        champs["doit_changer_mot_de_passe"] = False
-        return self.creer_utilisateur(
-            email=email,
-            mot_de_passe=mot_de_passe,
-            nom=nom,
-            prenom=prenom,
-            role="admin",
-            **champs,
-        )
-
-    def create_user(
-        self,
-        email: str,
-        password: str | None = None,
-        **extra_fields: Any,
-    ):
-        """Expose le point d’entrée requis par les commandes Django."""
-        if password is None:
-            raise ValueError("Un mot de passe est obligatoire.")
-        return self.creer_utilisateur(
-            email=email,
-            mot_de_passe=password,
-            **extra_fields,
-        )
-
-    def create_superuser(
-        self,
-        email: str,
-        password: str | None = None,
-        **extra_fields: Any,
-    ):
-        """Crée un compte d’administration selon l’interface Django obligatoire."""
-        if password is None:
-            raise ValueError("Un mot de passe est obligatoire.")
-        extra_fields.pop("role", None)
-        return self.creer_superutilisateur(
-            email=email,
-            mot_de_passe=password,
-            **extra_fields,
-        )
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault("role", "ADMIN")
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Le superutilisateur doit avoir is_staff=True")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Le superutilisateur doit avoir is_superuser=True")
+        return self.create_user(email=email, password=password, **extra_fields)

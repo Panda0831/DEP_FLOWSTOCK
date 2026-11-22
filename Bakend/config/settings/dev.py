@@ -1,12 +1,8 @@
 """Configuration de développement."""
 
-from . import base
-from .base import env
+from .base import *  # noqa: F403
 
-for nom_parametre in dir(base):
-    if nom_parametre.isupper():
-        globals()[nom_parametre] = getattr(base, nom_parametre)
-
-DEBUG = env.bool("DEBUG", default=False)
+DEBUG = True
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-ACTIVER_DOCUMENTATION_API = env.bool("ACTIVER_DOCUMENTATION_API", default=True)
