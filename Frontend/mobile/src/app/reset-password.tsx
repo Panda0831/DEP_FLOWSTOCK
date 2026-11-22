@@ -36,7 +36,7 @@ export default function ResetPasswordScreen() {
     setIsLoading(true);
     setMessage('');
     try {
-      const result = await confirmPasswordReset(uid, token, newPassword, confirmation);
+      const result = await confirmPasswordReset(uid, token, newPassword);
       setMessage(result.detail);
       setIsComplete(true);
     } catch (error) {

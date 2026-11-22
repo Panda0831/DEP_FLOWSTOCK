@@ -1,0 +1,2 @@
+import { ResourceScreen } from '@/components/resource-screen';
+export default function ClientsScreen() { return <ResourceScreen title="Clients" subtitle="Votre fichier clients FlowStock" endpoint="/clients/" titleKey="nomClient" subtitleKeys={['contact', 'adresse']} fields={[{ key: 'nomClient', label: 'Nom du client' }, { key: 'contact', label: 'Téléphone ou e-mail' }, { key: 'adresse', label: 'Adresse' }]} />; }

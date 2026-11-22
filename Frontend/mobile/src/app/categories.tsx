@@ -1,0 +1,2 @@
+import { ResourceScreen } from '@/components/resource-screen'; import { useAuth } from '@/lib/auth-context';
+export default function CategoriesScreen() { const { user } = useAuth(); return <ResourceScreen title="Catégories" subtitle="Classement des produits du catalogue" endpoint="/categories/" titleKey="nomCategorie" canEdit={user?.role === 'ADMIN' || !!user?.is_staff} fields={[{ key: 'nomCategorie', label: 'Nom de la catégorie' }]} />; }

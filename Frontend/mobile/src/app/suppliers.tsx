@@ -1,0 +1,2 @@
+import { ResourceScreen } from '@/components/resource-screen'; import { useAuth } from '@/lib/auth-context';
+export default function SuppliersScreen() { const { user } = useAuth(); return <ResourceScreen title="Fournisseurs" subtitle="Contacts fournisseurs du catalogue" endpoint="/suppliers/" titleKey="nomFournisseur" canEdit={user?.role === 'ADMIN' || !!user?.is_staff} fields={[{ key: 'nomFournisseur', label: 'Nom du fournisseur' }]} />; }

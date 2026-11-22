@@ -5,14 +5,13 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/lib/auth-context';
-import { ApiError, changeMyPassword } from '@/lib/api';
-import { readTokens } from '@/lib/auth-storage';
+import { changeMyPassword } from '@/lib/api';
 
 const GREEN = '#078343';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
-  const { clearLocalSession, isReady, user } = useAuth();
+  const { isReady, user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -37,10 +36,7 @@ export default function ChangePasswordScreen() {
     setIsLoading(true);
     setMessage('');
     try {
-      const tokens = await readTokens();
-      if (!tokens) throw new ApiError('Votre session a expiré. Reconnectez-vous.', 401);
-      await changeMyPassword(tokens.access, currentPassword, newPassword, confirmation);
-      await clearLocalSession();
+      await changeMyPassword(currentPassword, newPassword);
       setIsComplete(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Modification impossible. Réessayez.');

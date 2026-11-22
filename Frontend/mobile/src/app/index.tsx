@@ -111,7 +111,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (isReady && user) {
-      router.replace(user.doit_changer_mot_de_passe ? '/change-password' : '/home');
+      router.replace('/home');
     }
   }, [isReady, router, user]);
 
@@ -253,11 +253,10 @@ export default function HomeScreen() {
               <Text style={styles.footerPrompt}>Pas encore de compte ?</Text>
               <Pressable
                 onPress={() => {
-                  setMessage('La création de compte est réservée à un administrateur FlowStock.');
-                  setMessageIsSuccess(false);
+                  router.push('/signup');
                 }}
                 accessibilityRole="button">
-                <Text style={styles.footerLink}>Demander un accès</Text>
+                <Text style={styles.footerLink}>Créer un compte</Text>
               </Pressable>
             </View>
           </View>

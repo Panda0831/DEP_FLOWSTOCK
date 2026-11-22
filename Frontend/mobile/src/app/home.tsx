@@ -1,90 +1,48 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
-
 import { useAuth } from '@/lib/auth-context';
+import { api, type Page, type Stock } from '@/lib/api';
 
-const GREEN = '#078343';
+type Dashboard = { resume_financier: { chiffre_affaires: string; benefice_net: string; commandes_livrees: number }; alertes_stock: Stock[]; commandes_en_attente: number };
+type Pending = { public_id: string; date: string; client: string };
+const shortcuts = [
+  ['/products', 'Produits', 'Catalogue et tarifs'], ['/stock', 'Stock', 'Quantités et mouvements'], ['/orders', 'Commandes', 'Préparer une vente'], ['/clients', 'Clients', 'Fichier clients'], ['/deliveries', 'Livraisons', 'Suivre les expéditions'], ['/expenses', 'Dépenses', 'Saisir les charges'], ['/reports', 'Rapports', 'Résultats et exports'], ['/profile', 'Mon compte', 'Profil et sécurité'],
+] as const;
 
 export default function HomeScreen() {
-  const router = useRouter();
-  const { isReady, signOut, user } = useAuth();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    if (isReady && !user) router.replace('/');
-    if (user?.doit_changer_mot_de_passe) router.replace('/change-password');
-  }, [isReady, router, user]);
-
-  const handleSignOut = async () => {
-    setIsSigningOut(true);
-    setMessage('');
+  const router = useRouter(); const { user, signOut } = useAuth();
+  const [summary, setSummary] = useState<Dashboard | null>(null); const [pending, setPending] = useState<Pending[]>([]); const [stock, setStock] = useState<Stock[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState('');
+  const isAdmin = user?.role === 'ADMIN' || user?.is_staff;
+  const refresh = useCallback(async () => {
+    setLoading(true); setError('');
     try {
-      await signOut();
-    } catch {
-      setMessage('Session supprimée sur cet appareil. La révocation côté serveur a échoué.');
-    } finally {
-      setIsSigningOut(false);
-      router.replace('/');
-    }
-  };
+      const [p, s] = await Promise.all([api.get<Pending[] | Page<Pending>>('/dashboard/pending-orders/'), api.get<Stock[]>('/stock/alerts/')]);
+      setPending(Array.isArray(p) ? p : p.results); setStock(s);
+      if (isAdmin) setSummary(await api.get<Dashboard>('/dashboard/summary/'));
+    } catch (e) { setError(e instanceof Error ? e.message : 'Le tableau de bord est indisponible.'); }
+    finally { setLoading(false); }
+  }, [isAdmin]);
+  useEffect(() => { void refresh(); }, [refresh]);
+  const disconnect = async () => { try { await signOut(); } finally { router.replace('/'); } };
 
-  if (!isReady || !user) {
-    return (
-      <SafeAreaView style={styles.loading}>
-        <ActivityIndicator color={GREEN} size="large" />
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <StatusBar style="dark" />
-      <View pointerEvents="none" style={styles.glow} />
-      <View style={styles.content}>
-        <View style={styles.brandRow}>
-          <View style={styles.brandMark}><Text style={styles.brandLetter}>S</Text></View>
-          <Text style={styles.brandName}>StockFlow</Text>
-        </View>
-        <View style={styles.card}>
-          <Text style={styles.eyebrow}>ESPACE STOCKFLOW</Text>
-          <Text style={styles.title}>Bienvenue{user.prenom ? `, ${user.prenom}` : ''}</Text>
-          <Text style={styles.email}>{user.email}</Text>
-          <Text style={styles.description}>
-            Votre session est active. Vous pourrez accéder ici à la gestion de votre activité.
-          </Text>
-          {!!message && <Text style={styles.error}>{message}</Text>}
-          <Pressable
-            onPress={handleSignOut}
-            disabled={isSigningOut}
-            style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
-            {isSigningOut ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Se déconnecter</Text>}
-          </Pressable>
-        </View>
+  return <SafeAreaView style={styles.safe} edges={['top']}><StatusBar style="dark"/><ScrollView contentContainerStyle={styles.content}>
+    <View style={styles.header}><View><Text style={styles.brand}>FLOWSTOCK</Text><Text style={styles.greeting}>Bonjour{user?.nom_complet ? `, ${user.nom_complet.split(' ')[0]}` : ''}</Text><Text style={styles.role}>{user?.role === 'ADMIN' ? 'Administrateur' : 'Vendeur'} · {user?.email}</Text></View><Pressable onPress={disconnect} style={styles.logout}><Text style={styles.logoutText}>Quitter</Text></Pressable></View>
+    <View style={styles.hello}><Text style={styles.helloTitle}>Votre activité, en un coup d’œil</Text><Text style={styles.helloSub}>Données actualisées depuis l’API FlowStock.</Text></View>
+    {!!error && <Text style={styles.error}>{error}</Text>}
+    {loading ? <ActivityIndicator color="#078343" size="large" style={{ margin: 30 }} /> : <>
+      <View style={styles.stats}>
+        <Stat label="Commandes en attente" value={String(pending.length)} hint="À traiter"/>
+        <Stat label="Alertes de stock" value={String(stock.length)} hint="Sous le seuil"/>
+        {isAdmin && summary && <><Stat label="Chiffre d’affaires" value={`${Number(summary.resume_financier.chiffre_affaires).toLocaleString('fr-FR')} Ar`} hint="Mois en cours"/><Stat label="Bénéfice net" value={`${Number(summary.resume_financier.benefice_net).toLocaleString('fr-FR')} Ar`} hint="Après dépenses"/></>}
       </View>
-    </SafeAreaView>
-  );
+      {stock.length > 0 && <Pressable onPress={() => router.push('/stock')} style={styles.alert}><Text style={styles.alertTitle}>⚠ Stock à surveiller</Text><Text style={styles.alertText}>{stock.slice(0, 3).map((p) => `${p.nomProduit} (${p.stock}/${p.seuilAlerte})`).join(' · ')}</Text></Pressable>}
+      <Text style={styles.section}>Gérer l’activité</Text><View style={styles.grid}>{shortcuts.filter(([route]) => isAdmin || route !== '/expenses' && route !== '/reports').map(([route, title, detail]) => <Pressable key={route} onPress={() => router.push(route)} style={({ pressed }) => [styles.tile, pressed && { opacity: .85 }]}><View style={styles.tileIcon}><Text style={styles.tileInitial}>{title[0]}</Text></View><Text style={styles.tileTitle}>{title}</Text><Text style={styles.tileDetail}>{detail}</Text><Text style={styles.chevron}>›</Text></Pressable>)}</View>
+    </>}
+    <Pressable onPress={() => void refresh()} style={styles.refresh}><Text style={styles.refreshText}>Actualiser les données</Text></Pressable>
+  </ScrollView></SafeAreaView>;
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
-  glow: { position: 'absolute', width: 280, height: 280, borderRadius: 160, backgroundColor: '#E8F8EF', top: -195, left: -145 },
-  content: { flex: 1, width: '100%', maxWidth: 480, alignSelf: 'center', justifyContent: 'center', padding: 24 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 34 },
-  brandMark: { width: 42, height: 42, borderRadius: 21, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center' },
-  brandLetter: { color: '#FFFFFF', fontSize: 31, lineHeight: 38, fontWeight: '800' },
-  brandName: { color: '#142039', fontSize: 28, fontWeight: '800' },
-  card: { borderWidth: 1, borderColor: '#E0E7E2', borderRadius: 22, padding: 24, backgroundColor: '#FFFFFF' },
-  eyebrow: { color: GREEN, fontSize: 12, letterSpacing: 1.3, fontWeight: '700', marginBottom: 12 },
-  title: { color: '#142039', fontSize: 29, fontWeight: '700' },
-  email: { color: '#687182', fontSize: 15, marginTop: 5 },
-  description: { color: '#384154', fontSize: 15, lineHeight: 22, marginTop: 24 },
-  error: { color: '#A33B31', fontSize: 13, lineHeight: 18, marginTop: 16 },
-  button: { height: 54, backgroundColor: GREEN, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 28 },
-  buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
-  pressed: { opacity: 0.85 },
-});
+function Stat({ label, value, hint }: { label: string; value: string; hint: string }) { return <View style={styles.stat}><Text style={styles.statLabel}>{label}</Text><Text style={styles.statValue} numberOfLines={1}>{value}</Text><Text style={styles.statHint}>{hint}</Text></View>; }
+const styles = StyleSheet.create({ safe: { flex: 1, backgroundColor: '#F5F7F5' }, content: { width: '100%', maxWidth: 720, alignSelf: 'center', padding: 20, paddingBottom: 48 }, header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, brand: { color: '#078343', fontSize: 11, fontWeight: '800', letterSpacing: 2 }, greeting: { color: '#142039', fontSize: 27, fontWeight: '800', marginTop: 6 }, role: { color: '#778078', fontSize: 12, marginTop: 3 }, logout: { borderColor: '#DDE5DE', borderWidth: 1, borderRadius: 11, paddingVertical: 9, paddingHorizontal: 13 }, logoutText: { color: '#525D55', fontWeight: '700' }, hello: { backgroundColor: '#078343', borderRadius: 19, padding: 20, marginTop: 23, marginBottom: 16 }, helloTitle: { color: '#fff', fontWeight: '800', fontSize: 18 }, helloSub: { color: '#D8F1E1', fontSize: 13, marginTop: 5 }, stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, stat: { flexGrow: 1, flexBasis: '45%', backgroundColor: '#fff', borderRadius: 16, padding: 15, borderWidth: 1, borderColor: '#E6EBE6' }, statLabel: { color: '#66716A', fontSize: 12 }, statValue: { color: '#142039', fontWeight: '800', fontSize: 21, marginTop: 7 }, statHint: { color: '#89938C', fontSize: 11, marginTop: 3 }, alert: { backgroundColor: '#FFF7E7', borderColor: '#F1DFAF', borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 12 }, alertTitle: { color: '#7A5811', fontWeight: '800' }, alertText: { color: '#806925', fontSize: 12, marginTop: 5 }, section: { color: '#142039', fontWeight: '800', fontSize: 19, marginTop: 24, marginBottom: 12 }, grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, tile: { width: '48%', flexGrow: 1, minHeight: 130, borderRadius: 16, padding: 15, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E6EBE6' }, tileIcon: { width: 31, height: 31, borderRadius: 10, backgroundColor: '#E7F5EC', alignItems: 'center', justifyContent: 'center' }, tileInitial: { color: '#078343', fontWeight: '800' }, tileTitle: { color: '#142039', fontWeight: '800', marginTop: 10 }, tileDetail: { color: '#758079', fontSize: 11, marginTop: 4 }, chevron: { position: 'absolute', right: 13, top: 17, color: '#078343', fontSize: 20 }, error: { color: '#A33B31', marginVertical: 10 }, refresh: { alignSelf: 'center', padding: 15, marginTop: 10 }, refreshText: { color: '#078343', fontWeight: '700' } });
