@@ -79,9 +79,12 @@ export default function ReportsScreen() {
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
     <AppPageHeading title="Rapports" subtitle="Résultats calculés par le backend sur la période choisie." />
     {!admin ? <Text style={ui.error}>Les rapports financiers sont réservés aux administrateurs.</Text> : <>
-      <FadeIn delay={130}><View style={ui.card}><Text style={ui.cardTitle}>Période</Text>
-        <TextInput style={ui.input} value={start} onChangeText={setStart} placeholder="Début (AAAA-MM-JJ)" />
-        <TextInput style={ui.input} value={end} onChangeText={setEnd} placeholder="Fin (AAAA-MM-JJ)" />
+      <FadeIn delay={130}><View style={styles.periodCard}>
+        <View style={styles.periodHeading}><View style={styles.periodIcon}><Text style={styles.periodIconText}>⌁</Text></View><View><Text style={styles.periodTitle}>Période du rapport</Text><Text style={styles.periodCaption}>Choisissez les dates à analyser.</Text></View></View>
+        <Text style={styles.fieldLabel}>Du</Text>
+        <TextInput style={ui.input} value={start} onChangeText={setStart} placeholder="AAAA-MM-JJ" placeholderTextColor="#89919E" />
+        <Text style={styles.fieldLabel}>Au</Text>
+        <TextInput style={ui.input} value={end} onChangeText={setEnd} placeholder="AAAA-MM-JJ" placeholderTextColor="#89919E" />
         <Action label={loading ? 'Chargement…' : 'Afficher le rapport'} onPress={() => void load()} disabled={loading} />
       </View></FadeIn>
       {!!error && <Text style={ui.error}>{error}</Text>}
@@ -91,11 +94,14 @@ export default function ReportsScreen() {
           ['Chiffre d’affaires', summary.chiffre_affaires], ['Bénéfice brut', summary.benefice_brut],
           ['Dépenses', summary.depenses], ['Bénéfice net', summary.benefice_net],
           ['Commandes livrées', String(summary.commandes_livrees)],
-        ].map(([label, value]) => <View key={label} style={styles.metric}>
+        ].map(([label, value], index) => <View key={label} style={[styles.metric, index === 3 && styles.netMetric]}>
           <Text style={styles.metricLabel}>{label}</Text>
           <Text style={styles.metricValue}>{label === 'Commandes livrées' ? value : `${Number(value).toLocaleString('fr-FR')} Ar`}</Text>
         </View>)}</View></FadeIn>
-        <Action label={exporting ? 'Préparation…' : 'Exporter en Excel'} onPress={() => void exportExcel()} disabled={exporting} />
+        <View style={styles.exportCard}>
+          <View style={styles.exportCopy}><Text style={styles.exportTitle}>Votre rapport, prêt à partager</Text><Text style={styles.exportCaption}>Téléchargez les résultats au format Excel.</Text></View>
+          <Action label={exporting ? 'Préparation…' : 'Exporter'} onPress={() => void exportExcel()} disabled={exporting} />
+        </View>
         <View style={styles.chartCard}>
           <View style={styles.chartHeading}><View><Text style={ui.section}>Ventes par produit</Text><Text style={styles.chartCaption}>Chiffre d’affaires sur la période</Text></View><Text style={styles.chartUnit}>AR</Text></View>
           {products.length === 0 ? <Text style={ui.empty}>Aucune vente sur cette période.</Text> : [...products].sort((a, b) => Number(b.chiffre_affaires) - Number(a.chiffre_affaires)).slice(0, 6).map((item, _index, rows) => {
@@ -113,21 +119,43 @@ export default function ReportsScreen() {
           {orders.length === 0 ? <Text style={ui.empty}>Aucune commande livrée sur cette période.</Text> : orders.slice(0, 6).map((item) => <View key={item.public_id} style={styles.row}>
             <View style={{ flex: 1 }}><Text style={styles.name}>{item.client}</Text><Text style={styles.sub}>{item.date_livraison}</Text></View>
             <View style={styles.orderAmount}><Text style={styles.amountValue}>{Number(item.chiffre_affaires).toLocaleString('fr-FR')} Ar</Text><Text style={styles.sub}>Bénéfice {Number(item.benefice).toLocaleString('fr-FR')} Ar</Text></View>
-        </View>)}</View></FadeIn>
-        </View>
+          </View>)}</View>
       </>}
     </>}
   </ScrollView>;
 }
 
 const styles = StyleSheet.create({
+  periodCard: { backgroundColor: '#FFFFFF', borderRadius: 18, padding: 20, borderColor: '#DDE9DF', borderWidth: 1, marginBottom: 14, shadowColor: '#38704A', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 9, elevation: 1 },
+  periodHeading: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 16 },
+  periodIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#E7F5EC', alignItems: 'center', justifyContent: 'center' },
+  periodIconText: { color: '#078343', fontSize: 23, fontWeight: '700' },
+  periodTitle: { color: '#173D2B', fontSize: 16, fontWeight: '800' },
+  periodCaption: { color: '#77827A', fontSize: 11, marginTop: 3 },
+  fieldLabel: { color: '#4F5A52', fontSize: 11, fontWeight: '700', marginBottom: 6 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginVertical: 14 },
-  metric: { flexGrow: 1, flexBasis: 175, minHeight: 105, backgroundColor: '#fff', padding: 17, borderRadius: 16, borderColor: '#E5EBE6', borderWidth: 1 },
-  metricLabel: { color: '#717D74', fontSize: 12, fontWeight: '600' }, metricValue: { color: '#142039', fontSize: 19, fontWeight: '800', marginTop: 12 },
-  chartCard: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 18, borderColor: '#E5EBE6', borderWidth: 1, marginBottom: 16 },
+  metric: { flexGrow: 1, flexBasis: 175, minHeight: 105, backgroundColor: '#FFFFFF', padding: 17, borderRadius: 16, borderColor: '#DDE9DF', borderWidth: 1, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 7, elevation: 1 },
+  netMetric: { backgroundColor: '#E7F5EC', borderColor: '#CFE9D8' },
+  metricLabel: { color: '#68776D', fontSize: 12, fontWeight: '700' },
+  metricValue: { color: '#173D2B', fontSize: 19, fontWeight: '800', marginTop: 12 },
+  exportCard: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, backgroundColor: '#F0F8F2', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#D8EBDD', marginBottom: 16 },
+  exportCopy: { flex: 1, minWidth: 170 },
+  exportTitle: { color: '#173D2B', fontSize: 13, fontWeight: '800' },
+  exportCaption: { color: '#708077', fontSize: 11, marginTop: 4 },
+  chartCard: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 18, borderColor: '#DDE9DF', borderWidth: 1, marginBottom: 16, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 7, elevation: 1 },
   chartHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
-  chartCaption: { color: '#7A847D', fontSize: 12, marginTop: 3 }, chartUnit: { color: '#078343', fontWeight: '800', fontSize: 16, backgroundColor: '#E7F5EC', overflow: 'hidden', borderRadius: 10, paddingHorizontal: 11, paddingVertical: 7 },
-  chartRow: { marginBottom: 16 }, chartMeta: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 7 }, chartName: { color: '#142039', fontSize: 13, fontWeight: '700', flex: 1 }, chartAmount: { color: '#142039', fontSize: 12, fontWeight: '800' }, track: { height: 9, backgroundColor: '#EAF0EB', borderRadius: 9, overflow: 'hidden' }, fill: { height: '100%', backgroundColor: '#078343', borderRadius: 9 }, chartDetail: { color: '#7A847D', fontSize: 11, marginTop: 5 },
-  row: { backgroundColor: '#fff', padding: 14, borderRadius: 13, borderWidth: 1, borderColor: '#E5EBE6', marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  name: { color: '#142039', fontWeight: '800', fontSize: 13 }, sub: { color: '#758079', fontSize: 11, marginTop: 5 }, orderAmount: { alignItems: 'flex-end' }, amountValue: { color: '#142039', fontSize: 13, fontWeight: '800' },
+  chartCaption: { color: '#7A847D', fontSize: 12, marginTop: 3 },
+  chartUnit: { color: '#078343', fontWeight: '800', fontSize: 14, backgroundColor: '#E7F5EC', overflow: 'hidden', borderRadius: 10, paddingHorizontal: 11, paddingVertical: 7 },
+  chartRow: { marginBottom: 16 },
+  chartMeta: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 7 },
+  chartName: { color: '#173D2B', fontSize: 13, fontWeight: '700', flex: 1 },
+  chartAmount: { color: '#173D2B', fontSize: 12, fontWeight: '800' },
+  track: { height: 9, backgroundColor: '#EAF0EB', borderRadius: 9, overflow: 'hidden' },
+  fill: { height: '100%', backgroundColor: '#078343', borderRadius: 9 },
+  chartDetail: { color: '#7A847D', fontSize: 11, marginTop: 5 },
+  row: { backgroundColor: '#FFFFFF', padding: 14, borderRadius: 13, borderWidth: 1, borderColor: '#E1EAE2', marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  name: { color: '#173D2B', fontWeight: '800', fontSize: 13 },
+  sub: { color: '#758079', fontSize: 11, marginTop: 5 },
+  orderAmount: { alignItems: 'flex-end' },
+  amountValue: { color: '#173D2B', fontSize: 13, fontWeight: '800' },
 });

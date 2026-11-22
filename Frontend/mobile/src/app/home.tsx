@@ -14,7 +14,7 @@ type Monthly = { mois: string; benefice_net: string; depenses: string };
 type ChartPoint = { month: string; net: number; expenses: number; orders: number };
 type Segment = { label: string; value: number; color: string };
 
-const PALETTE = ['#078343', '#142039', '#778078', '#B63838', '#D8F1E1'];
+const PALETTE = ['#078343', '#D39A29', '#778078', '#B63838', '#D8F1E1'];
 
 async function fetchAllPages<T>(endpoint: string): Promise<T[]> {
   const first = await api.get<Page<T> | T[]>(endpoint);
@@ -98,7 +98,7 @@ function DonutCard({ title, caption, segments, delay }: { title: string; caption
               offset += fraction * circumference;
               return <Circle key={segment.label} cx="64" cy="64" r={radius} fill="none" stroke={segment.color} strokeWidth="16" strokeDasharray={`${arcLength} ${circumference - arcLength}`} strokeDashoffset={-currentOffset} transform="rotate(-90 64 64)" />;
             })}
-            <SvgText x="64" y="62" textAnchor="middle" fill="#142039" fontSize="23" fontWeight="700">{total}</SvgText>
+            <SvgText x="64" y="62" textAnchor="middle" fill="#173D2B" fontSize="23" fontWeight="700">{total}</SvgText>
             <SvgText x="64" y="80" textAnchor="middle" fill="#89938C" fontSize="8" fontWeight="700">TOTAL</SvgText>
           </Svg>
         </View>
@@ -143,14 +143,14 @@ function ProgressChart({ points, isAdmin, period, onPeriodChange }: { points: Ch
         <Defs><LinearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor="#078343" stopOpacity="0.18"/><Stop offset="1" stopColor="#078343" stopOpacity="0.01"/></LinearGradient></Defs>
         {[0, 1, 2, 3].map((row) => <Line key={row} x1={padding} x2={width - padding} y1={padding + row * ((height - padding * 2) / 3)} y2={padding + row * ((height - padding * 2) / 3)} stroke="#E7ECE7" strokeWidth="1" strokeDasharray="3 5" />)}
         {areaPath ? <Path d={areaPath} fill="url(#areaFill)" /> : null}
-        {spending?.path ? <Path d={spending.path} fill="none" stroke="#142039" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6 5" opacity="0.55" /> : null}
+        {spending?.path ? <Path d={spending.path} fill="none" stroke="#D39A29" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6 5" opacity="0.8" /> : null}
         {path ? <Path d={path} fill="none" stroke="#078343" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" /> : null}
         {coordinates.map((point, index) => index === coordinates.length - 1 ? <Circle key={index} cx={point.x} cy={point.y} r="5" fill="#FFFFFF" stroke="#078343" strokeWidth="3" /> : null)}
         {visibleLabels.map((label, index) => label ? <SvgText key={`${label}-${index}`} x={padding + index * ((width - padding * 2) / Math.max(1, points.length - 1))} y={height - 3} textAnchor={index === 0 ? 'start' : index === points.length - 1 ? 'end' : 'middle'} fill="#89938C" fontSize="10">{label}</SvgText> : null)}
       </Svg>
       <View style={styles.chartLegend}>
         <View style={styles.chartLegendItem}><View style={styles.greenLine}/><Text style={styles.chartLegendText}>{isAdmin ? 'Bénéfice net' : 'Commandes'}</Text></View>
-        {isAdmin && <View style={styles.chartLegendItem}><View style={styles.navyLine}/><Text style={styles.chartLegendText}>Dépenses</Text></View>}
+      {isAdmin && <View style={styles.chartLegendItem}><View style={styles.amberLine}/><Text style={styles.chartLegendText}>Dépenses</Text></View>}
       </View>
     </View>
   </Reveal>;
@@ -256,7 +256,7 @@ export default function HomeScreen() {
   const orderSegments = useMemo(() => {
     const statuses = [
       { key: 'confirmee', label: 'Confirmées', color: PALETTE[0] },
-      { key: 'en_attente', label: 'En attente', color: '#142039' },
+      { key: 'en_attente', label: 'En attente', color: '#D39A29' },
       { key: 'annulee', label: 'Annulées', color: '#B63838' },
     ];
     return statuses.map((status) => ({ label: status.label, color: status.color, value: orders.filter((order) => order.statut === status.key).length }));
@@ -317,7 +317,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F7F5' },
+  safe: { flex: 1, backgroundColor: '#F5F8F5' },
   content: { width: '100%', maxWidth: 1080, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 26, paddingBottom: 28 },
   header: { flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center', minHeight: 58 },
   hello: { backgroundColor: '#078343', borderRadius: 20, paddingHorizontal: 23, paddingVertical: 19, marginTop: 22, marginBottom: 18, minHeight: 156, overflow: 'hidden' },
@@ -338,22 +338,22 @@ const styles = StyleSheet.create({
   heroMetricFoot: { color: '#D8F1E1', fontSize: 10, marginTop: 3 },
   stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   statWrap: { flexGrow: 1, flexBasis: 155, minWidth: 145 },
-  stat: { backgroundColor: '#FFFFFF', borderRadius: 17, padding: 17, borderWidth: 1, borderColor: '#E6EBE6', minHeight: 122 },
+  stat: { backgroundColor: '#FFFFFF', borderRadius: 17, padding: 17, borderWidth: 1, borderColor: '#DDE9DF', minHeight: 122, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 7, elevation: 1 },
   statPressed: { transform: [{ scale: 0.985 }], borderColor: '#078343' },
   statTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   statMark: { width: 30, height: 30, borderRadius: 10, backgroundColor: '#E7F5EC', alignItems: 'center', justifyContent: 'center' },
   statMarkText: { color: '#078343', fontSize: 9, fontWeight: '900' },
   statLabel: { color: '#66716A', fontSize: 12, fontWeight: '600' },
-  statValue: { color: '#142039', fontWeight: '800', fontSize: 20, marginTop: 10 },
+  statValue: { color: '#173D2B', fontWeight: '800', fontSize: 20, marginTop: 10 },
   statHint: { color: '#89938C', fontSize: 11, marginTop: 4 },
   alert: { backgroundColor: '#FFF7E7', borderColor: '#F1DFAF', borderWidth: 1, borderRadius: 15, padding: 16, marginTop: 14 },
   alertHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   alertTitle: { color: '#7A5811', fontWeight: '800', fontSize: 14 },
   alertCount: { color: '#806925', fontSize: 11, fontWeight: '700' },
   alertText: { color: '#806925', fontSize: 12, marginTop: 7 },
-  progressCard: { backgroundColor: '#FFFFFF', borderRadius: 19, borderWidth: 1, borderColor: '#E6EBE6', padding: 19, marginTop: 17 },
+  progressCard: { backgroundColor: '#FFFFFF', borderRadius: 19, borderWidth: 1, borderColor: '#DDE9DF', padding: 19, marginTop: 17, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 7, elevation: 1 },
   chartHeader: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  chartTitle: { color: '#142039', fontSize: 14, fontWeight: '800' },
+  chartTitle: { color: '#173D2B', fontSize: 14, fontWeight: '800' },
   chartCaption: { color: '#89938C', fontSize: 11, marginTop: 4 },
   chartDots: { color: '#89938C', fontSize: 18, letterSpacing: 2 },
   periodSwitch: { flexDirection: 'row', backgroundColor: '#F0F4F1', padding: 3, borderRadius: 10 },
@@ -362,19 +362,19 @@ const styles = StyleSheet.create({
   periodText: { color: '#66716A', fontSize: 10, fontWeight: '700' },
   periodTextActive: { color: '#FFFFFF' },
   chartSummary: { marginTop: 17 },
-  currentValue: { color: '#142039', fontSize: 22, fontWeight: '800' },
+  currentValue: { color: '#173D2B', fontSize: 22, fontWeight: '800' },
   currentLabel: { color: '#89938C', fontSize: 11, marginTop: 3 },
   chartLegend: { flexDirection: 'row', gap: 18, marginTop: 4 },
   chartLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   chartLegendText: { color: '#69756D', fontSize: 10, fontWeight: '600' },
   greenLine: { width: 15, height: 3, borderRadius: 3, backgroundColor: '#078343' },
-  navyLine: { width: 15, height: 3, borderRadius: 3, backgroundColor: '#142039', opacity: 0.55 },
+  amberLine: { width: 15, height: 3, borderRadius: 3, backgroundColor: '#D39A29' },
   sectionHeading: { marginTop: 26, marginBottom: 12 },
-  section: { color: '#142039', fontWeight: '800', fontSize: 19 },
+  section: { color: '#173D2B', fontWeight: '800', fontSize: 19 },
   sectionHint: { color: '#89938C', fontSize: 11, marginTop: 4 },
   donutGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 13 },
   donutWrap: { flexGrow: 1, flexBasis: 370, minWidth: 250 },
-  donutCard: { backgroundColor: '#FFFFFF', borderRadius: 19, borderWidth: 1, borderColor: '#E6EBE6', padding: 17, minHeight: 208 },
+  donutCard: { backgroundColor: '#FFFFFF', borderRadius: 19, borderWidth: 1, borderColor: '#DDE9DF', padding: 17, minHeight: 208, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 7, elevation: 1 },
   donutHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   donutBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 9 },
   donutGraphic: { width: 132, height: 132, alignItems: 'center', justifyContent: 'center' },
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   legendDot: { width: 7, height: 7, borderRadius: 5 },
   legendLabel: { color: '#727D75', fontSize: 10, flex: 1 },
-  legendValue: { color: '#142039', fontSize: 10, fontWeight: '800' },
+  legendValue: { color: '#173D2B', fontSize: 10, fontWeight: '800' },
   emptyLegend: { color: '#89938C', fontSize: 11 },
   error: { color: '#A33B31', marginVertical: 10, padding: 12, backgroundColor: '#FCEBE9', borderRadius: 10 },
   refresh: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 16, marginTop: 12, borderRadius: 12 },

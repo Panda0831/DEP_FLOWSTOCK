@@ -3,6 +3,7 @@ import { SymbolView } from 'expo-symbols';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/lib/auth-context';
+import { FadeIn } from '@/components/motion';
 
 const primaryLinks = [
   { label: 'Accueil', shortLabel: 'Accueil', href: '/home', matches: ['/home'], icon: { ios: 'house.fill', android: 'home', web: 'home' } },
@@ -13,17 +14,17 @@ const primaryLinks = [
 ] as const;
 
 const sectionLinks = [
-  { label: 'Vue générale', href: '/home', admin: false },
-  { label: 'Produits', href: '/products', admin: false },
-  { label: 'Catégories', href: '/categories', admin: false },
-  { label: 'Fournisseurs', href: '/suppliers', admin: false },
-  { label: 'Stock', href: '/stock', admin: false },
-  { label: 'Commandes', href: '/orders', admin: false },
-  { label: 'Clients', href: '/clients', admin: false },
-  { label: 'Livraisons', href: '/deliveries', admin: false },
-  { label: 'Dépenses', href: '/expenses', admin: true },
-  { label: 'Rapports', href: '/reports', admin: true },
-  { label: 'Mon compte', href: '/profile', admin: false },
+  { label: 'Vue générale', href: '/home', group: 'Accueil', admin: false },
+  { label: 'Produits', href: '/products', group: 'Catalogue', admin: false },
+  { label: 'Catégories', href: '/categories', group: 'Catalogue', admin: false },
+  { label: 'Fournisseurs', href: '/suppliers', group: 'Catalogue', admin: false },
+  { label: 'Stock', href: '/stock', group: 'Activité', admin: false },
+  { label: 'Commandes', href: '/orders', group: 'Activité', admin: false },
+  { label: 'Clients', href: '/clients', group: 'Activité', admin: false },
+  { label: 'Livraisons', href: '/deliveries', group: 'Activité', admin: false },
+  { label: 'Dépenses', href: '/expenses', group: 'Finances', admin: true },
+  { label: 'Rapports', href: '/reports', group: 'Finances', admin: true },
+  { label: 'Mon compte', href: '/profile', group: 'Compte', admin: false },
 ] as const;
 
 export function AppNavigation() {
@@ -36,20 +37,24 @@ export function AppNavigation() {
   if (!user || pathname === '/' || pathname === '/signup' || pathname === '/reset-password') return null;
 
   const visiblePrimary = primaryLinks.filter((link) => !('admin' in link && link.admin && !isAdmin));
-  const visibleSections = sectionLinks.filter((link) => !link.admin || isAdmin);
   const activePrimary = visiblePrimary.find((link) => link.matches.some((path) => pathname === path || pathname.startsWith(`${path}/`)));
+  const visibleSections = sectionLinks.filter((link) => link.group === activePrimary?.label && (!link.admin || isAdmin));
 
   return (
     <View style={[styles.shell, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       <View style={styles.inner}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectionRow}>
-          {visibleSections.map((link) => {
-            const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
-            return <Pressable key={link.href} onPress={() => router.push(link.href)} style={[styles.sectionItem, active && styles.sectionItemActive]}>
-              <Text style={[styles.sectionText, active && styles.sectionTextActive]}>{link.label}</Text>
-            </Pressable>;
-          })}
-        </ScrollView>
+        <FadeIn key={activePrimary?.label || 'section'} style={styles.sectionAnimation}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectionRow}>
+            {visibleSections.map((link, index) => {
+              const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+              return <FadeIn key={link.href} delay={index * 45}>
+                <Pressable onPress={() => router.push(link.href)} style={[styles.sectionItem, active && styles.sectionItemActive]} accessibilityRole="button" accessibilityLabel={link.label} accessibilityState={{ selected: active }}>
+                  <Text style={[styles.sectionText, active && styles.sectionTextActive]}>{link.label}</Text>
+                </Pressable>
+              </FadeIn>;
+            })}
+          </ScrollView>
+        </FadeIn>
 
         <View style={styles.dock}>
           {visiblePrimary.map((link) => {
@@ -70,7 +75,8 @@ export function AppNavigation() {
 const styles = StyleSheet.create({
   shell: { zIndex: 10, width: '100%', backgroundColor: 'transparent', paddingTop: 4, paddingHorizontal: 14 },
   inner: { width: '100%', maxWidth: 680, alignSelf: 'center', gap: 8 },
-  sectionRow: { minHeight: 43, alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 16, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E3E9E4' },
+  sectionAnimation: { minHeight: 43 },
+  sectionRow: { flexGrow: 1, minHeight: 43, justifyContent: 'center', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 16, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E3E9E4' },
   sectionItem: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 11 },
   sectionItemActive: { backgroundColor: '#E7F5EC' },
   sectionText: { color: '#69756D', fontSize: 11, fontWeight: '600' },

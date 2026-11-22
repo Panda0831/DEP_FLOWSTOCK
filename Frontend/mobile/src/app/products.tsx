@@ -26,10 +26,13 @@ export default function ProductsScreen() {
 
   return <ResourceScreen
     title="Produits"
-    subtitle="Catalogue, prix de vente et niveaux d’alerte"
+    subtitle="Gérez les articles, leurs prix et leurs niveaux d’alerte."
     endpoint="/products/"
     titleKey="nomProduit"
     subtitleKeys={['prixVente', 'seuilAlerte']}
+    listTitle="Produits du catalogue"
+    emptyText="Aucun produit dans le catalogue pour le moment."
+    itemMarker="PRD"
     canEdit={!!admin}
     fields={[
       { key: 'nomProduit', label: 'Nom du produit' },

@@ -63,9 +63,10 @@ export default function ResetPasswordScreen() {
             </Text>
             {!isComplete && !!uid && !!token && (
               <View style={styles.form}>
+                <Text style={styles.fieldLabel}>Nouveau mot de passe</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Nouveau mot de passe"
+                  placeholder="Saisissez un nouveau mot de passe"
                   placeholderTextColor="#7B8190"
                   value={newPassword}
                   onChangeText={setNewPassword}
@@ -73,9 +74,10 @@ export default function ResetPasswordScreen() {
                   autoComplete="new-password"
                   textContentType="newPassword"
                 />
+                <Text style={styles.fieldLabel}>Confirmer le mot de passe</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Confirmer le nouveau mot de passe"
+                  placeholder="Saisissez-le une seconde fois"
                   placeholderTextColor="#7B8190"
                   value={confirmation}
                   onChangeText={setConfirmation}
@@ -85,7 +87,7 @@ export default function ResetPasswordScreen() {
                 />
               </View>
             )}
-            {!!message && <Text style={[styles.message, isComplete && styles.success]}>{message}</Text>}
+            {!!message && <Text accessibilityRole="alert" style={[styles.message, isComplete && styles.success]}>{message}</Text>}
             <MotionPressable
               onPress={isComplete ? () => router.replace('/') : handleSubmit}
               disabled={isLoading}
@@ -109,17 +111,18 @@ export default function ResetPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  safeArea: { flex: 1, backgroundColor: '#F5F8F5' },
   keyboard: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  content: { width: '100%', maxWidth: 430, alignSelf: 'center', backgroundColor: '#FFFFFF', padding: 24, borderRadius: 22, borderWidth: 1, borderColor: '#E3E9E4' },
+  content: { width: '100%', maxWidth: 430, alignSelf: 'center', backgroundColor: '#FFFFFF', padding: 24, borderRadius: 22, borderWidth: 1, borderColor: '#DDE9DF', shadowColor: '#38704A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 2 },
   brand: { alignItems: 'center', marginBottom: 24 },
-  title: { color: '#142039', fontSize: 28, fontWeight: '700', textAlign: 'center' },
-  subtitle: { color: '#596174', fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 9, marginBottom: 28 },
-  form: { gap: 13 },
-  input: { height: 56, borderWidth: 1, borderColor: '#C8CFD9', borderRadius: 14, paddingHorizontal: 16, fontSize: 16, color: '#202638' },
-  message: { color: '#A33B31', fontSize: 13, lineHeight: 18, marginTop: 14 },
-  success: { color: GREEN },
+  title: { color: '#173D2B', fontSize: 28, fontWeight: '800', textAlign: 'center' },
+  subtitle: { color: '#65736A', fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 9, marginBottom: 22 },
+  form: { gap: 0 },
+  fieldLabel: { color: '#4F5A52', fontSize: 12, fontWeight: '700', marginBottom: 7, marginTop: 11 },
+  input: { height: 54, borderWidth: 1, borderColor: '#D9E3DB', borderRadius: 14, paddingHorizontal: 16, fontSize: 15, color: '#173D2B', backgroundColor: '#FBFDFB' },
+  message: { color: '#A33B31', fontSize: 13, lineHeight: 18, marginTop: 14, padding: 11, borderRadius: 11, backgroundColor: '#FFF0EF' },
+  success: { color: '#078343', backgroundColor: '#EAF7EE' },
   button: { minHeight: 56, paddingHorizontal: 12, backgroundColor: GREEN, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 22 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', textAlign: 'center' },
   backButton: { marginTop: 14, alignItems: 'center', padding: 8 },

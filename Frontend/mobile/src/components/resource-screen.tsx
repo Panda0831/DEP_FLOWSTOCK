@@ -8,8 +8,23 @@ export type ResourceOption = { value: string; label: string };
 export type ResourceField = { key: string; label: string; placeholder?: string; optional?: boolean; clearToNull?: boolean; options?: ResourceOption[] };
 type Resource = Record<string, unknown> & { public_id: string };
 
-export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, subtitleKeys = [], canEdit = true, canDelete = canEdit, canView = true }: {
-  title: string; subtitle: string; endpoint: string; fields: ResourceField[]; titleKey: string; subtitleKeys?: string[]; canEdit?: boolean; canDelete?: boolean; canView?: boolean;
+function formatResourceValue(key: string, value: unknown) {
+  if (value === null || value === undefined || value === '') return '—';
+  const normalizedKey = key.toLocaleLowerCase('fr-FR');
+  if (normalizedKey.includes('date')) {
+    const raw = String(value);
+    const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T00:00:00` : raw);
+    if (!Number.isNaN(date.getTime())) return date.toLocaleDateString('fr-FR', { dateStyle: 'medium' });
+  }
+  if (['montant', 'prixvente', 'prixachat'].includes(normalizedKey)) {
+    const amount = Number(value);
+    if (Number.isFinite(amount)) return `${amount.toLocaleString('fr-FR')} Ar`;
+  }
+  return String(value);
+}
+
+export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, subtitleKeys = [], listTitle = 'Éléments', emptyText = 'Aucun élément trouvé.', itemMarker, canEdit = true, canDelete = canEdit, canView = true }: {
+  title: string; subtitle: string; endpoint: string; fields: ResourceField[]; titleKey: string; subtitleKeys?: string[]; listTitle?: string; emptyText?: string; itemMarker?: string; canEdit?: boolean; canDelete?: boolean; canView?: boolean;
 }) {
   const [items, setItems] = useState<Resource[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -60,30 +75,35 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
     <AppPageHeading title={title} subtitle={subtitle} />
     {canEdit && <FadeIn delay={130}><View style={styles.card}>
       <Text style={styles.cardTitle}>{editing ? 'Modifier' : 'Ajouter'}</Text>
+      <Text style={styles.cardDescription}>{editing ? 'Mettez à jour les informations puis enregistrez.' : `Renseignez les champs pour ajouter à ${title.toLocaleLowerCase('fr-FR')}.`}</Text>
       {fields.map((field) => field.options ? <View key={field.key} style={styles.selectField}>
         <Text style={styles.fieldLabel}>{field.label}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {field.optional && <Pressable onPress={() => setValues((old) => ({ ...old, [field.key]: '' }))} style={[styles.option, !values[field.key] && styles.optionSelected]}><Text style={[styles.optionText, !values[field.key] && styles.optionSelectedText]}>Aucun</Text></Pressable>}
           {field.options.map((option) => <Pressable key={option.value} onPress={() => setValues((old) => ({ ...old, [field.key]: option.value }))} style={[styles.option, values[field.key] === option.value && styles.optionSelected]}><Text style={[styles.optionText, values[field.key] === option.value && styles.optionSelectedText]}>{option.label}</Text></Pressable>)}
         </ScrollView>
-      </View> : <TextInput key={field.key} value={values[field.key] || ''} onChangeText={(value) => setValues((old) => ({ ...old, [field.key]: value }))} placeholder={field.placeholder || field.label} placeholderTextColor="#89919E" style={styles.input} />)}
+      </View> : <View key={field.key} style={styles.textField}>
+        <Text style={styles.fieldLabel}>{field.label}</Text>
+        <TextInput value={values[field.key] || ''} onChangeText={(value) => setValues((old) => ({ ...old, [field.key]: value }))} placeholder={field.placeholder || field.label} placeholderTextColor="#89919E" style={styles.input} />
+      </View>)}
       {!!error && <Text style={styles.error}>{error}</Text>}
       <View style={styles.actions}><Action label={saving ? 'Enregistrement…' : editing ? 'Enregistrer' : 'Ajouter'} onPress={save} disabled={saving} /><MotionPressable onPress={resetForm} style={styles.ghost}><Text style={styles.ghostText}>{editing ? 'Annuler' : 'Effacer'}</Text></MotionPressable></View>
     </View></FadeIn>}
     {error && (!canEdit || !canView) ? <Text style={styles.error}>{error}</Text> : null}
-    <View style={styles.listHeader}><Text style={styles.section}>Éléments</Text><Pressable onPress={() => void refresh()}><Text style={styles.refresh}>Actualiser</Text></Pressable></View>
-    {loading ? <ActivityIndicator color="#078343" style={{ marginTop: 28 }} /> : items.length === 0 ? <FadeIn delay={150}><Text style={styles.empty}>Aucun élément trouvé.</Text></FadeIn> : items.map((item, index) => <FadeIn key={item.public_id} delay={Math.min(index * 35, 280)}><View style={styles.row}>
-      <View style={{ flex: 1 }}><Text style={styles.rowTitle}>{String(item[titleKey] ?? 'Sans nom')}</Text>{subtitleKeys.map((key) => <Text key={key} style={styles.rowSub}>{String(item[key] ?? '—')}</Text>)}</View>
+    <View style={styles.listHeader}><Text style={styles.section}>{listTitle}</Text><Pressable onPress={() => void refresh()}><Text style={styles.refresh}>Actualiser</Text></Pressable></View>
+    {loading ? <ActivityIndicator color="#078343" style={{ marginTop: 28 }} /> : items.length === 0 ? <FadeIn delay={150}><Text style={styles.empty}>{emptyText}</Text></FadeIn> : items.map((item, index) => <FadeIn key={item.public_id} delay={Math.min(index * 35, 280)}><View style={styles.row}>
+      {itemMarker && <View style={styles.rowMarker}><Text style={styles.rowMarkerText}>{itemMarker}</Text></View>}
+      <View style={{ flex: 1 }}><Text style={styles.rowTitle}>{String(item[titleKey] ?? 'Sans nom')}</Text>{subtitleKeys.map((key) => <Text key={key} style={styles.rowSub}>{formatResourceValue(key, item[key])}</Text>)}</View>
       {canEdit && <View style={styles.rowActions}><MotionPressable onPress={() => startEdit(item)}><Text style={styles.actionText}>Modifier</Text></MotionPressable>{canDelete && <MotionPressable onPress={() => remove(item)}><Text style={[styles.actionText, { color: '#B63838' }]}>Supprimer</Text></MotionPressable>}</View>}
     </View></FadeIn>)}
   </ScrollView>;
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#F5F7F5' }, content: { width: '100%', maxWidth: 1020, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 64 },
+  page: { flex: 1, backgroundColor: '#F5F8F5' }, content: { width: '100%', maxWidth: 1020, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 64 },
   pageHeading: { flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 22 }, headingAccent: { width: 4, height: 43, borderRadius: 4, backgroundColor: '#078343' },
-  title: { color: '#142039', fontSize: 29, fontWeight: '800' }, subtitle: { color: '#6B7380', fontSize: 14, marginTop: 5 }, card: { backgroundColor: '#fff', borderRadius: 18, padding: 20, borderColor: '#E3E9E4', borderWidth: 1, marginBottom: 24 }, cardTitle: { color: '#142039', fontSize: 17, fontWeight: '700', marginBottom: 14 }, input: { height: 48, borderWidth: 1, borderColor: '#D9E0DA', borderRadius: 12, paddingHorizontal: 13, color: '#142039', marginBottom: 10, backgroundColor: '#FCFDFC' },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }, button: { minHeight: 44, paddingHorizontal: 18, backgroundColor: '#078343', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: '#fff', fontSize: 14, fontWeight: '700' }, ghost: { paddingHorizontal: 12, paddingVertical: 10 }, ghostText: { color: '#657064', fontWeight: '600' }, error: { color: '#B63838', marginBottom: 12, fontSize: 13 }, selectField: { marginBottom: 8 }, fieldLabel: { color: '#68736B', fontSize: 12, marginBottom: 7 }, option: { paddingVertical: 9, paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#F0F4F1', marginRight: 7, marginBottom: 8 }, optionSelected: { backgroundColor: '#078343' }, optionText: { color: '#465149', fontSize: 12, fontWeight: '600' }, optionSelectedText: { color: '#fff' }, listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }, section: { color: '#142039', fontSize: 18, fontWeight: '700' }, refresh: { color: '#078343', fontWeight: '700' }, empty: { color: '#79827C', textAlign: 'center', marginVertical: 28 }, row: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E6EBE6', borderRadius: 15, padding: 15, marginBottom: 9, gap: 12 }, rowTitle: { color: '#17233B', fontWeight: '700', fontSize: 15 }, rowSub: { color: '#758079', fontSize: 13, marginTop: 3 }, rowActions: { gap: 10, alignItems: 'flex-end' }, actionText: { color: '#078343', fontWeight: '700', fontSize: 12 },
+  title: { color: '#173D2B', fontSize: 29, fontWeight: '800' }, subtitle: { color: '#6B7380', fontSize: 14, marginTop: 5 }, card: { backgroundColor: '#fff', borderRadius: 18, padding: 20, borderColor: '#DDE9DF', borderWidth: 1, marginBottom: 24, shadowColor: '#38704A', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 9, elevation: 1 }, cardTitle: { color: '#173D2B', fontSize: 17, fontWeight: '800' }, cardDescription: { color: '#77827A', fontSize: 12, lineHeight: 17, marginTop: 5, marginBottom: 16 }, textField: { marginBottom: 2 }, fieldLabel: { color: '#4F5A52', fontSize: 11, fontWeight: '700', marginBottom: 6 }, input: { height: 48, borderWidth: 1, borderColor: '#D9E3DB', borderRadius: 12, paddingHorizontal: 13, color: '#173D2B', marginBottom: 12, backgroundColor: '#FBFDFB' },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }, button: { minHeight: 44, paddingHorizontal: 18, backgroundColor: '#078343', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: '#fff', fontSize: 14, fontWeight: '700' }, ghost: { paddingHorizontal: 12, paddingVertical: 10 }, ghostText: { color: '#657064', fontWeight: '600' }, error: { color: '#B63838', marginBottom: 12, fontSize: 13 }, selectField: { marginBottom: 8 }, option: { paddingVertical: 9, paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#F0F4F1', marginRight: 7, marginBottom: 8 }, optionSelected: { backgroundColor: '#078343' }, optionText: { color: '#465149', fontSize: 12, fontWeight: '600' }, optionSelectedText: { color: '#fff' }, listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }, section: { color: '#173D2B', fontSize: 18, fontWeight: '800' }, refresh: { color: '#078343', fontWeight: '700' }, empty: { color: '#79827C', textAlign: 'center', marginVertical: 28 }, row: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#DDE9DF', borderRadius: 15, padding: 15, marginBottom: 9, gap: 12, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 }, rowMarker: { width: 39, height: 39, alignItems: 'center', justifyContent: 'center', borderRadius: 13, backgroundColor: '#E7F5EC' }, rowMarkerText: { color: '#078343', fontSize: 12, fontWeight: '800' }, rowTitle: { color: '#173D2B', fontWeight: '800', fontSize: 15 }, rowSub: { color: '#758079', fontSize: 12, marginTop: 4 }, rowActions: { gap: 10, alignItems: 'flex-end' }, actionText: { color: '#078343', fontWeight: '700', fontSize: 12 },
 });
 export const uiStyles = styles;
 export function Action({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
