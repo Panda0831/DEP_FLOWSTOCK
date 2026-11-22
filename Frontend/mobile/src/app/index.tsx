@@ -15,7 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/lib/auth-context';
-import { requestPasswordReset } from '@/lib/session-api';
+import { getRememberedEmail, requestPasswordReset, setRememberedEmail } from '@/lib/session-api';
 import { BrandLockup } from '@/components/brand-lockup';
 import { FadeIn, MotionPressable } from '@/components/motion';
 
@@ -97,10 +97,22 @@ export default function HomeScreen() {
   const { isReady, signIn, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [messageIsSuccess, setMessageIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void getRememberedEmail().then((savedEmail) => {
+      if (active && savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (isReady && user) {
@@ -124,6 +136,7 @@ export default function HomeScreen() {
     setIsLoading(true);
     try {
       await signIn(email.trim(), password);
+      try { await setRememberedEmail(rememberMe ? email.trim() : null); } catch { /* Login should not fail if local storage is unavailable. */ }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Connexion impossible. Réessayez.');
     } finally {
@@ -218,9 +231,27 @@ export default function HomeScreen() {
                 }
               />
 
-              <MotionPressable onPress={handleForgotPassword} style={styles.forgotButton}>
-                <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
-              </MotionPressable>
+              <View style={styles.loginOptions}>
+                <Pressable
+                  onPress={() => {
+                    const nextValue = !rememberMe;
+                    setRememberMe(nextValue);
+                    if (!nextValue) void setRememberedEmail(null).catch(() => {});
+                  }}
+                  style={styles.rememberButton}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: rememberMe }}
+                  accessibilityLabel="Se souvenir de moi">
+                  <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                    {rememberMe && <Text style={styles.checkboxMark}>✓</Text>}
+                  </View>
+                  <Text style={styles.rememberText}>Se souvenir de moi</Text>
+                </Pressable>
+
+                <MotionPressable onPress={handleForgotPassword} style={styles.forgotButton}>
+                  <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+                </MotionPressable>
+              </View>
 
               {!!message && (
                 <Text style={[styles.message, messageIsSuccess && styles.successMessage]}>
@@ -325,7 +356,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#68766D',
     transform: [{ rotate: '-42deg' }],
   },
-  forgotButton: { alignSelf: 'flex-end', marginTop: -3, paddingVertical: 2 },
+  loginOptions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: -3 },
+  rememberButton: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 },
+  checkbox: { width: 18, height: 18, borderWidth: 1.5, borderColor: '#B9C9BD', borderRadius: 5, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  checkboxChecked: { backgroundColor: GREEN, borderColor: GREEN },
+  checkboxMark: { color: '#FFFFFF', fontSize: 12, fontWeight: '900', lineHeight: 14 },
+  rememberText: { color: '#526259', fontSize: 12, fontWeight: '600' },
+  forgotButton: { paddingVertical: 2 },
   forgotText: { color: GREEN, fontWeight: '600', fontSize: 14 },
   message: { color: '#A33B31', fontSize: 13, lineHeight: 18, marginTop: -4, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#FFF0EF', borderRadius: 11 },
   successMessage: { color: GREEN, backgroundColor: '#EAF7EE' },

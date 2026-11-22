@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth-context';
 import { changeMyPassword, updateMyProfile } from '@/lib/session-api';
@@ -22,6 +22,7 @@ export default function ProfileScreen() {
   const [nouveau, setNouveau] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -141,11 +142,29 @@ export default function ProfileScreen() {
           <Text style={styles.signOutTitle}>Déconnexion</Text>
           <Text style={styles.signOutDescription}>Terminez votre session sur cet appareil.</Text>
         </View>
-        <MotionPressable onPress={() => void disconnect()} disabled={busy} style={[styles.signOutButton, busy && styles.disabled]} accessibilityRole="button">
+        <MotionPressable onPress={() => setConfirmDisconnect(true)} disabled={busy} style={[styles.signOutButton, busy && styles.disabled]} accessibilityRole="button">
           {busy ? <ActivityIndicator color="#B63838" /> : <Text style={styles.signOutText}>Se déconnecter</Text>}
         </MotionPressable>
       </View>
     </FadeIn>
+
+    <Modal visible={confirmDisconnect} transparent animationType="fade" onRequestClose={() => setConfirmDisconnect(false)}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.confirmCard} accessibilityRole="alert">
+          <View style={styles.confirmIcon}><Text style={styles.confirmIconText}>↗</Text></View>
+          <Text style={styles.confirmTitle}>Se déconnecter ?</Text>
+          <Text style={styles.confirmDescription}>Votre session FlowStock sera terminée sur cet appareil.</Text>
+          <View style={styles.confirmActions}>
+            <Pressable onPress={() => setConfirmDisconnect(false)} style={styles.keepButton} accessibilityRole="button">
+              <Text style={styles.keepButtonText}>Non, rester</Text>
+            </Pressable>
+            <Pressable onPress={() => { setConfirmDisconnect(false); void disconnect(); }} style={styles.confirmLogoutButton} accessibilityRole="button">
+              <Text style={styles.confirmLogoutText}>Oui, déconnecter</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   </ScrollView>;
 }
 
@@ -188,4 +207,15 @@ const styles = StyleSheet.create({
   signOutButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 11, backgroundColor: '#FFF0F0', borderWidth: 1, borderColor: '#F3D1D1' },
   signOutText: { color: '#B63838', fontSize: 11, fontWeight: '800' },
   disabled: { opacity: 0.55 },
+  modalBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: 'rgba(23,61,43,0.34)' },
+  confirmCard: { width: '100%', maxWidth: 380, alignItems: 'center', padding: 24, borderRadius: 22, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDE9DF', shadowColor: '#38704A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 6 },
+  confirmIcon: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: '#FFF0F0' },
+  confirmIconText: { color: '#B63838', fontSize: 23, fontWeight: '800' },
+  confirmTitle: { color: '#173D2B', fontSize: 18, fontWeight: '800', marginTop: 14 },
+  confirmDescription: { color: '#65736A', fontSize: 13, textAlign: 'center', lineHeight: 19, marginTop: 7 },
+  confirmActions: { flexDirection: 'row', alignSelf: 'stretch', gap: 10, marginTop: 22 },
+  keepButton: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#F0F8F2', borderWidth: 1, borderColor: '#DDE9DF' },
+  keepButtonText: { color: '#17633A', fontSize: 12, fontWeight: '800' },
+  confirmLogoutButton: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#B63838' },
+  confirmLogoutText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
 });

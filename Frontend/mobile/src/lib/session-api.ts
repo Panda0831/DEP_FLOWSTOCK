@@ -18,6 +18,7 @@ export class ApiError extends Error {
 }
 
 const COOKIE_KEY = 'flowstock.session.cookies';
+const REMEMBERED_EMAIL_KEY = 'flowstock.remembered.email';
 const getBase = () => {
   const value = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, '');
   if (!value) throw new Error('Configurez EXPO_PUBLIC_API_URL avec l’adresse de l’API FlowStock.');
@@ -28,6 +29,25 @@ let csrf = '';
 let cookie = '';
 let cookieLoaded = false;
 let cookieLoadPromise: Promise<void> | null = null;
+
+export async function getRememberedEmail() {
+  if (Platform.OS === 'web') {
+    if (typeof window === 'undefined') return '';
+    return window.localStorage.getItem(REMEMBERED_EMAIL_KEY) || '';
+  }
+  return await SecureStore.getItemAsync(REMEMBERED_EMAIL_KEY) || '';
+}
+
+export async function setRememberedEmail(email: string | null) {
+  if (Platform.OS === 'web') {
+    if (typeof window === 'undefined') return;
+    if (email) window.localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
+    else window.localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+    return;
+  }
+  if (email) await SecureStore.setItemAsync(REMEMBERED_EMAIL_KEY, email);
+  else await SecureStore.deleteItemAsync(REMEMBERED_EMAIL_KEY);
+}
 
 async function loadCookieJar() {
   if (cookieLoaded) return;
