@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 
 export function BrandLockup({ variant = 'compact', tagline = false }: { variant?: 'compact' | 'hero'; tagline?: boolean }) {
   const motion = useRef(new Animated.Value(0)).current;
+  const nameMotion = useRef(new Animated.Value(1)).current;
+  const [alternateName, setAlternateName] = useState(false);
   useEffect(() => {
     const animation = Animated.loop(Animated.sequence([
       Animated.timing(motion, { toValue: 1, duration: 1150, useNativeDriver: true }),
@@ -12,12 +14,29 @@ export function BrandLockup({ variant = 'compact', tagline = false }: { variant?
     return () => animation.stop();
   }, [motion]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(nameMotion, { toValue: 0, duration: 180, useNativeDriver: true }).start(({ finished }) => {
+        if (!finished) return;
+        setAlternateName((current) => !current);
+        nameMotion.setValue(0);
+        Animated.spring(nameMotion, { toValue: 1, speed: 18, bounciness: 5, useNativeDriver: true }).start();
+      });
+    }, 3000);
+    return () => {
+      clearInterval(interval);
+      nameMotion.stopAnimation();
+    };
+  }, [nameMotion]);
+
   const scale = motion.interpolate({ inputRange: [0, 1], outputRange: [1, 1.055] });
   const waveShift = motion.interpolate({ inputRange: [0, 1], outputRange: [-3, 4] });
   const hero = variant === 'hero';
+  const name = alternateName ? 'FlowStock' : 'StockFlow';
+  const nameShift = nameMotion.interpolate({ inputRange: [0, 1], outputRange: [5, 0] });
 
   return (
-    <View style={hero ? styles.hero : styles.compact} accessibilityLabel="StockFlow">
+    <View style={hero ? styles.hero : styles.compact} accessibilityLabel={name} accessibilityRole="text">
       <View style={hero ? styles.heroHalo : styles.compactHalo}>
         <Animated.View style={[hero ? styles.heroMark : styles.compactMark, { transform: [{ scale }] }]}>
           <Text style={hero ? styles.heroLetter : styles.compactLetter}>S</Text>
@@ -25,7 +44,7 @@ export function BrandLockup({ variant = 'compact', tagline = false }: { variant?
         </Animated.View>
       </View>
       <View style={hero ? styles.heroCopy : styles.compactCopy}>
-        <Text style={hero ? styles.heroName : styles.compactName}>StockFlow</Text>
+        <Animated.Text style={[hero ? styles.heroName : styles.compactName, { opacity: nameMotion, transform: [{ translateY: nameShift }] }]}>{name}</Animated.Text>
         {tagline && <Text style={hero ? styles.heroTagline : styles.compactTagline}>Gérez votre activité en toute simplicité</Text>}
       </View>
     </View>

@@ -7,6 +7,7 @@ import Svg, { Circle, Defs, LinearGradient, Line, Path, Stop, Text as SvgText } 
 import { useAuth } from '@/lib/auth-context';
 import { api, type Categorie, type Page, type Produit, type Stock } from '@/lib/session-api';
 import { BrandLockup } from '@/components/brand-lockup';
+import { BrandDivider } from '@/components/motion';
 
 type Dashboard = { resume_financier: { chiffre_affaires: string; benefice_net: string; commandes_livrees: number }; alertes_stock: Stock[]; commandes_en_attente: number };
 type Order = { public_id: string; date: string; statut: string; client: string };
@@ -158,6 +159,7 @@ function ProgressChart({ points, isAdmin, period, onPeriodChange }: { points: Ch
 
 export default function HomeScreen() {
   const router = useRouter();
+  const heroMotion = useRef(new Animated.Value(0)).current;
   const { user, isReady } = useAuth();
   const { width } = useWindowDimensions();
   const [summary, setSummary] = useState<Dashboard | null>(null);
@@ -172,6 +174,15 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const isAdmin = user?.role === 'ADMIN' || user?.is_staff;
+
+  useEffect(() => {
+    const animation = Animated.loop(Animated.sequence([
+      Animated.timing(heroMotion, { toValue: 1, duration: 2400, useNativeDriver: true }),
+      Animated.timing(heroMotion, { toValue: 0, duration: 2400, useNativeDriver: true }),
+    ]));
+    animation.start();
+    return () => animation.stop();
+  }, [heroMotion]);
 
   useEffect(() => {
     if (isReady && !user) router.replace('/');
@@ -267,6 +278,9 @@ export default function HomeScreen() {
   const isCompact = width < 700;
   const todayLabel = new Date().toLocaleDateString('fr-FR', isCompact ? { day: 'numeric', month: 'short' } : { weekday: 'long', day: 'numeric', month: 'long' });
   const currentMonthOrders = chartPoints[chartPoints.length - 1]?.orders || 0;
+  const heroFloat = heroMotion.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
+  const heroScale = heroMotion.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1.03] });
+  const heroGlow = heroMotion.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.7] });
 
   return <SafeAreaView style={styles.safe} edges={['top']}>
     <StatusBar style="dark" />
@@ -274,15 +288,20 @@ export default function HomeScreen() {
       <Reveal>
         <View style={styles.header}><BrandLockup /></View>
       </Reveal>
+      <BrandDivider style={styles.homeDivider} />
       <Reveal delay={80}>
-        <View style={styles.hello}>
-          <View style={styles.helloTop}><View style={styles.live}><View style={styles.liveDot} /><Text style={styles.liveText}>VUE D’ENSEMBLE</Text></View><Text style={styles.dateLabel}>{todayLabel}</Text></View>
+        <View style={[styles.hello, isCompact && styles.helloCompact]}>
+          <Animated.View pointerEvents="none" style={[styles.heroOrb, { opacity: heroGlow, transform: [{ translateY: heroFloat }, { scale: heroScale }] }]}>
+            <View style={styles.heroOrbCore} />
+          </Animated.View>
+          <Animated.View pointerEvents="none" style={[styles.heroShine, { opacity: heroGlow }]} />
+          <View style={[styles.helloTop, isCompact && styles.helloTopCompact]}><Text style={styles.dateLabel}>{todayLabel}</Text></View>
           <View style={[styles.heroBody, isCompact && styles.heroBodyCompact]}>
-            <View style={styles.heroCopy}><Text style={styles.helloTitle}>Votre activité évolue</Text><Text style={styles.helloSub}>Suivez les tendances et les indicateurs clés de FlowStock.</Text></View>
+            <View style={styles.heroCopy}><Text style={[styles.helloTitle, isCompact && styles.helloTitleCompact]}>Votre activité évolue</Text><Text style={[styles.helloSub, isCompact && styles.helloSubCompact]}>Suivez les tendances et les indicateurs clés de FlowStock.</Text></View>
             <View style={[styles.heroMetric, isCompact && styles.heroMetricCompact]}>
               <Text style={styles.heroMetricLabel}>{isAdmin ? 'CHIFFRE D’AFFAIRES · CE MOIS' : 'COMMANDES · CE MOIS'}</Text>
-              <Text style={styles.heroMetricValue}>{isAdmin ? summary ? `${Number(summary.resume_financier.chiffre_affaires).toLocaleString('fr-FR')} Ar` : '—' : String(currentMonthOrders)}</Text>
-              <Text style={styles.heroMetricFoot}>{isAdmin ? summary ? `${summary.resume_financier.commandes_livrees} commandes livrées` : 'Résumé indisponible' : 'commandes enregistrées'}</Text>
+              <Text style={[styles.heroMetricValue, isCompact && styles.heroMetricValueCompact]}>{isAdmin ? summary ? `${Number(summary.resume_financier.chiffre_affaires).toLocaleString('fr-FR')} Ar` : '—' : String(currentMonthOrders)}</Text>
+              <Text style={[styles.heroMetricFoot, isCompact && styles.heroMetricFootCompact]}>{isAdmin ? summary ? `${summary.resume_financier.commandes_livrees} commandes livrées` : 'Résumé indisponible' : 'commandes enregistrées'}</Text>
             </View>
           </View>
         </View>
@@ -320,22 +339,29 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F5F8F5' },
   content: { width: '100%', maxWidth: 1080, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 26, paddingBottom: 28 },
   header: { flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center', minHeight: 58 },
+  homeDivider: { marginBottom: 0 },
   hello: { backgroundColor: '#078343', borderRadius: 20, paddingHorizontal: 23, paddingVertical: 19, marginTop: 22, marginBottom: 18, minHeight: 156, overflow: 'hidden' },
+  helloCompact: { alignSelf: 'stretch', paddingVertical: 7 },
+  heroOrb: { position: 'absolute', width: 150, height: 150, top: -67, right: -37, borderRadius: 75, borderWidth: 1, borderColor: '#FFFFFF33', backgroundColor: '#FFFFFF12', alignItems: 'center', justifyContent: 'center' },
+  heroOrbCore: { width: 88, height: 88, borderRadius: 44, borderWidth: 1, borderColor: '#FFFFFF22', backgroundColor: '#FFFFFF0A' },
+  heroShine: { position: 'absolute', top: 0, left: 23, width: '46%', height: 2, borderRadius: 2, backgroundColor: '#7FE7A4' },
   helloTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 10 },
-  live: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#FFFFFF22', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
-  liveDot: { width: 6, height: 6, borderRadius: 4, backgroundColor: '#D8F1E1' },
-  liveText: { color: '#D8F1E1', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+  helloTopCompact: { marginBottom: 6 },
   dateLabel: { color: '#D8F1E1', fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
   heroBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 22 },
-  heroBodyCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 14 },
+  heroBodyCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
   heroCopy: { flex: 1 },
   helloTitle: { color: '#FFFFFF', fontWeight: '800', fontSize: 22 },
+  helloTitleCompact: { fontSize: 20 },
   helloSub: { color: '#D8F1E1', fontSize: 13, marginTop: 6, maxWidth: 430, lineHeight: 19 },
+  helloSubCompact: { fontSize: 12, lineHeight: 16, marginTop: 4 },
   heroMetric: { minWidth: 230, paddingLeft: 22, borderLeftWidth: 1, borderLeftColor: '#D8F1E1' },
-  heroMetricCompact: { minWidth: 0, paddingLeft: 0, paddingTop: 13, borderLeftWidth: 0, borderTopWidth: 1, borderTopColor: '#D8F1E1' },
+  heroMetricCompact: { minWidth: 0, paddingLeft: 0, paddingTop: 5, borderLeftWidth: 0, borderTopWidth: 1, borderTopColor: '#D8F1E1' },
   heroMetricLabel: { color: '#D8F1E1', fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
   heroMetricValue: { color: '#FFFFFF', fontWeight: '800', fontSize: 22, marginTop: 6 },
+  heroMetricValueCompact: { fontSize: 18, marginTop: 3 },
   heroMetricFoot: { color: '#D8F1E1', fontSize: 10, marginTop: 3 },
+  heroMetricFootCompact: { fontSize: 9, marginTop: 2 },
   stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   statWrap: { flexGrow: 1, flexBasis: 155, minWidth: 145 },
   stat: { backgroundColor: '#FFFFFF', borderRadius: 17, padding: 17, borderWidth: 1, borderColor: '#DDE9DF', minHeight: 122, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 7, elevation: 1 },

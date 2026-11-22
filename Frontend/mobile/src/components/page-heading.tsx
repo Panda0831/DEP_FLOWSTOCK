@@ -1,10 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { BrandLockup } from '@/components/brand-lockup';
-import { FadeIn } from '@/components/motion';
+import { BrandDivider, FadeIn } from '@/components/motion';
 
 export function AppPageHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return <>
     <FadeIn><View style={styles.brand}><BrandLockup /></View></FadeIn>
+    <BrandDivider />
     <FadeIn delay={70}><View style={styles.heading}>
       <View style={styles.accent} />
       <View style={styles.copy}><Text style={styles.title}>{title}</Text><Text style={styles.subtitle}>{subtitle}</Text></View>
@@ -13,7 +14,7 @@ export function AppPageHeading({ title, subtitle }: { title: string; subtitle: s
 }
 
 const styles = StyleSheet.create({
-  brand: { marginBottom: 19 },
+  brand: { marginBottom: 12 },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 22 },
   accent: { width: 4, height: 43, borderRadius: 4, backgroundColor: '#078343' },
   copy: { flex: 1 },

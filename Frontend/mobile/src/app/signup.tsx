@@ -2,7 +2,7 @@ import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { BrandLockup } from '@/components/brand-lockup';
-import { FadeIn, MotionPressable } from '@/components/motion';
+import { BrandDivider, FadeIn, MotionPressable } from '@/components/motion';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -10,6 +10,7 @@ export default function SignupScreen() {
     <StatusBar style="dark" />
     <FadeIn style={styles.card}>
       <BrandLockup variant="hero" />
+      <BrandDivider style={styles.divider} />
       <View style={styles.copyBlock}>
         <Text style={styles.eyebrow}>ACCÈS À L’ESPACE</Text>
         <Text style={styles.title}>Demander un accès</Text>
@@ -25,7 +26,8 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F5F8F5', justifyContent: 'center', padding: 22 },
   card: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: '#FFFFFF', borderRadius: 24, padding: 28, borderWidth: 1, borderColor: '#DDE9DF', shadowColor: '#38704A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 20, elevation: 3 },
-  copyBlock: { marginTop: 30 },
+  copyBlock: { marginTop: 12 },
+  divider: { marginTop: 20 },
   eyebrow: { color: '#078343', fontSize: 10, fontWeight: '800', letterSpacing: 1.2, textAlign: 'center' },
   title: { color: '#173D2B', fontSize: 27, fontWeight: '800', marginTop: 9, textAlign: 'center' },
   copy: { color: '#65736A', fontSize: 14, lineHeight: 22, marginTop: 11, textAlign: 'center' },

@@ -5,3 +5,5 @@ met des annimations ui/ux dans ce front pour que l'user soit à l'aise et je veu
 je veux que lorsque je clique sur la nav finance par exemple ,seulement depense et rapport qui s'affiche sur la nav pour plus d'annimations
 
 si possible ajouter une petite carte pour voir les données des livraison et ces emplacements pour la prise de décision
+
+sans entre les données de la place mais seulement le clicker ou taper sur la carte et les données de l'emplacement s'affiche pour un gain de temps

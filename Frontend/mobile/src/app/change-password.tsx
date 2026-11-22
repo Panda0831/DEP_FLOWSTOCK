@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth-context';
 import { changeMyPassword } from '@/lib/session-api';
 import { BrandLockup } from '@/components/brand-lockup';
-import { FadeIn, MotionPressable } from '@/components/motion';
+import { BrandDivider, FadeIn, MotionPressable } from '@/components/motion';
 
 const GREEN = '#078343';
 
@@ -62,6 +62,7 @@ export default function ChangePasswordScreen() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <FadeIn style={styles.content}>
             <View style={styles.brand}><BrandLockup variant="hero" tagline /></View>
+            <BrandDivider />
             <Text style={styles.title}>{isComplete ? 'Mot de passe modifié' : 'Sécurisez votre compte'}</Text>
             <Text style={styles.subtitle}>
               {isComplete
@@ -129,7 +130,7 @@ const styles = StyleSheet.create({
   keyboard: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   content: { width: '100%', maxWidth: 430, alignSelf: 'center', backgroundColor: '#FFFFFF', padding: 24, borderRadius: 22, borderWidth: 1, borderColor: '#DDE9DF', shadowColor: '#38704A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 2 },
-  brand: { alignItems: 'center', marginBottom: 24 },
+  brand: { alignItems: 'center', marginBottom: 8 },
   title: { color: '#173D2B', fontSize: 28, fontWeight: '800', textAlign: 'center' },
   subtitle: { color: '#65736A', fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 9, marginBottom: 19 },
   form: { gap: 0 },

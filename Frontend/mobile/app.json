@@ -34,7 +34,14 @@
         }
       ],
       "expo-secure-store",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-maps",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "FlowStock utilise le point choisi sur la carte pour afficher son adresse."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

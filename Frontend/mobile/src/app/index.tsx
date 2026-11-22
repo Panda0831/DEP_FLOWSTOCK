@@ -17,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth-context';
 import { getRememberedEmail, requestPasswordReset, setRememberedEmail } from '@/lib/session-api';
 import { BrandLockup } from '@/components/brand-lockup';
-import { FadeIn, MotionPressable } from '@/components/motion';
+import { BrandDivider, FadeIn, MotionPressable } from '@/components/motion';
 
 const GREEN = '#078343';
 
@@ -194,6 +194,7 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}>
           <View style={styles.content}>
             <FadeIn><View style={styles.brand}><BrandLockup variant="hero" tagline /></View></FadeIn>
+            <BrandDivider />
 
             <FadeIn delay={120}><View style={styles.form}>
               <Text style={styles.heading}>Connexion</Text>
