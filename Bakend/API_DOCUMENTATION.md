@@ -361,6 +361,11 @@ Exemple de résumé :
 ```json
 {
   "chiffre_affaires": "250000.00",
+  "ventes_produits": "250000.00",
+  "remises": "0.00",
+  "frais_livraison_factures": "0.00",
+  "cout_produits": "185000.00",
+  "cout_livraisons": "0.00",
   "benefice_brut": "65000.00",
   "depenses": "12000.00",
   "benefice_net": "53000.00",
@@ -374,6 +379,11 @@ Le tableau de bord admin renvoie cette structure :
 {
   "resume_financier": {
     "chiffre_affaires": "250000.00",
+    "ventes_produits": "250000.00",
+    "remises": "0.00",
+    "frais_livraison_factures": "0.00",
+    "cout_produits": "185000.00",
+    "cout_livraisons": "0.00",
     "benefice_brut": "65000.00",
     "depenses": "12000.00",
     "benefice_net": "53000.00",

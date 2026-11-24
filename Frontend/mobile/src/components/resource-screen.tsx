@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { api, fetchAll } from '@/lib/session-api';
 import { HitSize, Radius, Type } from '@/constants/theme';
@@ -7,7 +8,7 @@ import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 import { MotionPressable } from '@/components/motion';
 import { AppPageHeading } from '@/components/page-heading';
 import { OptionSelect } from '@/components/option-select';
-import { LIST_PAGE_SIZE, ShowMore } from '@/components/show-more';
+import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
 import { useAutoOpenForm } from '@/components/form-disclosure';
 
 export type ResourceOption = { value: string; label: string };
@@ -98,13 +99,14 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   loader: { marginVertical: 24 },
 });
 
-export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, subtitleKeys = [], listTitle = 'Éléments', emptyText = 'Aucun élément trouvé.', itemMarker, canEdit = true, canDelete = canEdit, canView = true, onCreated, searchable = false, summary, itemMetric }: {
-  title: string; subtitle: string; endpoint: string; fields: ResourceField[]; titleKey: string; subtitleKeys?: string[]; listTitle?: string; emptyText?: string; itemMarker?: string; canEdit?: boolean; canDelete?: boolean; canView?: boolean; onCreated?: (item: ResourceItem) => void; searchable?: boolean; summary?: ReactNode; itemMetric?: (item: ResourceItem) => { value: string; label: string; warning?: boolean } | undefined;
+export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, subtitleKeys = [], listTitle = 'Éléments', emptyText = 'Aucun élément trouvé.', itemMarker, canEdit = true, canDelete = canEdit, canView = true, onCreated, searchable = false, summary, itemMetric, focusId, openFocused = false }: {
+  title: string; subtitle: string; endpoint: string; fields: ResourceField[]; titleKey: string; subtitleKeys?: string[]; listTitle?: string; emptyText?: string; itemMarker?: string; canEdit?: boolean; canDelete?: boolean; canView?: boolean; onCreated?: (item: ResourceItem) => void; searchable?: boolean; summary?: ReactNode; itemMetric?: (item: ResourceItem) => { value: string; label: string; warning?: boolean } | undefined; focusId?: string; openFocused?: boolean;
 }) {
+  const router = useRouter();
   const t = useAppTheme();
   const styles = useMemo(() => makeStyles(t), [t]);
   const [items, setItems] = useState<ResourceItem[]>([]);
-  const [limit, setLimit] = useState(LIST_PAGE_SIZE);
+  const [page, setPage] = useState(1);
   const [values, setValues] = useState<Record<string, string>>({});
   const autoOpen = useAutoOpenForm();
   const [editing, setEditing] = useState<ResourceItem | null>(null);
@@ -114,13 +116,14 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const openedFocus = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!canView) { setItems([]); setLimit(LIST_PAGE_SIZE); setError('Cette section est réservée aux administrateurs.'); setLoading(false); return; }
+    if (!canView) { setItems([]); setPage(1); setError('Cette section est réservée aux administrateurs.'); setLoading(false); return; }
     setLoading(true); setError('');
     try {
       setItems(await fetchAll<ResourceItem>(endpoint));
-      setLimit(LIST_PAGE_SIZE);
+      setPage(1);
     } catch (e) { setError(e instanceof Error ? e.message : 'Chargement impossible.'); }
     finally { setLoading(false); }
   }, [canView, endpoint]);
@@ -135,6 +138,18 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
     setFormOpen(true);
     setError('');
   };
+  useEffect(() => {
+    if (!openFocused || !focusId || !canEdit || loading || openedFocus.current === focusId) return;
+    const item = items.find((candidate) => candidate.public_id === focusId);
+    if (!item) return;
+    openedFocus.current = focusId;
+    setEditing(item);
+    const nextValues = Object.fromEntries(fields.map((field) => [field.key, String(item[field.key] ?? '')]));
+    setValues(nextValues);
+    setOptionalOpen(fields.some((field) => field.optional && !!nextValues[field.key]?.trim()));
+    setFormOpen(true);
+    setError('');
+  }, [canEdit, fields, focusId, items, loading, openFocused]);
   const startCreate = () => { setEditing(null); setValues({}); setOptionalOpen(false); setFormOpen(true); setError(''); };
 
   const missingRequired = fields.find((f) => !f.optional && !values[f.key]?.trim());
@@ -175,6 +190,9 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
     if (!needle) return items;
     return items.filter((item) => [titleKey, ...subtitleKeys].some((key) => String(item[key] ?? '').toLocaleLowerCase('fr-FR').includes(needle)));
   }, [items, query, subtitleKeys, titleKey]);
+  const orderedItems = useMemo(() => focusId
+    ? [...filteredItems].sort((a, b) => Number(b.public_id === focusId) - Number(a.public_id === focusId))
+    : filteredItems, [filteredItems, focusId]);
   const renderField = (field: ResourceField) => field.options ? (
     <OptionSelect
       key={field.key}
@@ -205,6 +223,7 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
   return (
     <ScrollView style={styles.page} contentContainerStyle={uiStyles.content} keyboardShouldPersistTaps="handled">
       <AppPageHeading title={title} subtitle={subtitle} />
+      {focusId && <MotionPressable onPress={() => router.back()} style={{ minHeight: HitSize, justifyContent: 'center', alignSelf: 'flex-start' }} accessibilityRole="button"><Text style={styles.actionText}>‹ Retour</Text></MotionPressable>}
       {summary}
       {canEdit && (
         <View style={styles.headingRow}>
@@ -215,15 +234,17 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
         </View>
       )}
       {!canEdit && <View style={styles.listHeader}><Text style={styles.section}>{listTitle}</Text></View>}
-      {searchable && <TextInput value={query} onChangeText={setQuery} placeholder={`Rechercher ${title.toLocaleLowerCase('fr-FR')}`} placeholderTextColor={t.secondaryText} style={styles.search} accessibilityLabel={`Rechercher ${title.toLocaleLowerCase('fr-FR')}`} returnKeyType="search" />}
+      {searchable && <TextInput value={query} onChangeText={(value) => { setQuery(value); setPage(1); }} placeholder={`Rechercher ${title.toLocaleLowerCase('fr-FR')}`} placeholderTextColor={t.secondaryText} style={styles.search} accessibilityLabel={`Rechercher ${title.toLocaleLowerCase('fr-FR')}`} returnKeyType="search" />}
       {error && !formOpen && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
       {loading ? <ActivityIndicator color={t.tint} style={styles.loader} />
-        : filteredItems.length === 0 ? <Text style={styles.empty}>{items.length ? 'Aucun résultat pour cette recherche.' : emptyText}</Text>
-        : filteredItems.slice(0, limit).map((item) => {
+        : orderedItems.length === 0 ? <Text style={styles.empty}>{items.length ? 'Aucun résultat pour cette recherche.' : emptyText}</Text>
+        : orderedItems.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE).map((item) => {
           const metric = itemMetric?.(item);
           return <View key={item.public_id} style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>{String(item[titleKey] ?? 'Sans nom')}</Text>
+              {canEdit
+                ? <MotionPressable onPress={() => startEdit(item)} accessibilityRole="button" accessibilityLabel={`Gérer ${String(item[titleKey] ?? '')}`}><Text style={styles.rowTitle}>{String(item[titleKey] ?? 'Sans nom')} ›</Text></MotionPressable>
+                : <Text style={styles.rowTitle}>{String(item[titleKey] ?? 'Sans nom')}</Text>}
               {subtitleKeys.map((key) => <Text key={key} style={styles.rowSub}>{formatResourceValue(key, item[key])}</Text>)}
               {canEdit && <View style={styles.rowActions}>
                 <MotionPressable onPress={() => startEdit(item)} accessibilityRole="button" accessibilityLabel={`Modifier ${String(item[titleKey] ?? '')}`}><Text style={styles.actionText}>Modifier</Text></MotionPressable>
@@ -236,8 +257,8 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
             </View>}
           </View>;
         })}
-      {!loading && <ShowMore remaining={filteredItems.length - limit} onPress={() => setLimit((current) => current + LIST_PAGE_SIZE)} />}
-      {!loading && filteredItems.length > 0 && (
+      {!loading && <PageNavigation page={page} totalItems={orderedItems.length} onPageChange={setPage} />}
+      {!loading && orderedItems.length > 0 && (
         <View style={styles.listHeader}>
           <MotionPressable onPress={() => void refresh()} accessibilityRole="button"><Text style={styles.refresh}>Actualiser</Text></MotionPressable>
         </View>

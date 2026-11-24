@@ -60,7 +60,12 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-L'image contient l'application, pas la base PostgreSQL ni les secrets. La
-configuration `DATABASE_URL`, `DJANGO_SECRET_KEY`, `ALLOWED_HOSTS` et le service
-HTTPS devront être fournis par l'environnement de déploiement. Le déploiement
-automatique sur VPS sera raccordé quand le serveur aura été choisi.
+L'image contient l'application, pas la base PostgreSQL ni les secrets. Pour le
+déploiement VPS par Docker Compose, la configuration de production et les
+secrets restent dans un fichier `.env` créé directement sur le serveur; Compose
+construit `DATABASE_URL` à partir des variables PostgreSQL. Le job de livraison
+SSH ne s’exécute qu’après la publication réussie d’un tag `v*` et si la variable
+GitHub `VPS_DEPLOY_ENABLED=true` est activée. La procédure, les secrets GitHub
+requis, les prérequis du serveur et les limites sont décrits dans
+[`deploy/vps/README.md`](../deploy/vps/README.md). Aucun VPS n’est choisi ou
+provisionné par le dépôt.

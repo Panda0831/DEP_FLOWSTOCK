@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { api, fetchAll, type Produit } from '@/lib/session-api';
+import { api, fetchAll, type Produit, type Stock } from '@/lib/session-api';
 import { useAuth } from '@/lib/auth-context';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
@@ -15,6 +15,7 @@ export default function NewStockMovementScreen() {
   const { user } = useAuth();
   const admin = user?.role === 'ADMIN' || !!user?.is_staff;
   const [products, setProducts] = useState<Produit[]>([]);
+  const [currentStock, setCurrentStock] = useState<Record<string, number>>({});
   const [product, setProduct] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [loading, setLoading] = useState(true);
@@ -24,7 +25,14 @@ export default function NewStockMovementScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    try { setProducts(await fetchAll<Produit>('/products/')); }
+    try {
+      const [productList, stockList] = await Promise.all([
+        fetchAll<Produit>('/products/'),
+        api.get<Stock[]>('/stock/'),
+      ]);
+      setProducts(productList);
+      setCurrentStock(Object.fromEntries(stockList.map((item) => [item.public_id, item.stock])));
+    }
     catch (e) { setError(e instanceof Error ? e.message : 'Chargement impossible.'); }
     finally { setLoading(false); }
   }, []);
@@ -68,7 +76,7 @@ export default function NewStockMovementScreen() {
     </View> : <View style={ui.card}>
       <Text style={styles.formTitle}>Quel produit voulez-vous ajuster ?</Text>
       <Text style={styles.formHint}>Choisissez un article, puis indiquez le nombre d’unités.</Text>
-      <OptionSelect label="Produit" options={toOptions(products, (item) => item.nomProduit, (item) => `Stock actuel : ${item.stock}`)} value={product} onChange={setProduct} placeholder="Choisir un produit" />
+      <OptionSelect label="Produit" options={toOptions(products, (item) => item.nomProduit, (item) => `En stock : ${currentStock[item.public_id] ?? 0}`)} value={product} onChange={setProduct} placeholder="Choisir un produit" />
       <QuantityField value={quantity} onChange={setQuantity} hint="Nombre entier, au minimum 1." />
       <View style={styles.actions}>
         <View style={styles.actionSlot}><Action label={busy ? 'Enregistrement…' : 'Enregistrer une entrée'} onPress={() => void adjust('entries')} disabled={busy || !valid} /></View>

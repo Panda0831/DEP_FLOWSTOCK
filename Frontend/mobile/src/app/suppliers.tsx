@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth-context';
 
 export default function SuppliersScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ flow?: string }>();
+  const params = useLocalSearchParams<{ flow?: string; focus?: string; open?: string }>();
   const { user } = useAuth();
   return <ResourceScreen
     title="Fournisseurs"
@@ -15,6 +15,8 @@ export default function SuppliersScreen() {
     emptyText="Aucun fournisseur enregistré pour le moment."
     itemMarker="FRN"
     canEdit={user?.role === 'ADMIN' || !!user?.is_staff}
+    focusId={typeof params.focus === 'string' ? params.focus : undefined}
+    openFocused={params.open === '1'}
     fields={[{ key: 'nomFournisseur', label: 'Nom du fournisseur' }]}
     onCreated={(supplier) => {
       if (params.flow === 'purchase') {

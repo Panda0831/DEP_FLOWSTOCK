@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import transaction
 from django.db.models import F, Sum
@@ -42,14 +42,23 @@ def calculer_resume(debut, fin):
         idCommande__in=commandes_livrees(debut, fin),
         statut=Livraison.Statut.LIVREE,
     ).aggregate(frais=Sum("fraisFacture"), cout=Sum("cout"))
+    remises = commandes_livrees(debut, fin).aggregate(total=Sum("remise"))["total"] or ZERO
     depenses = (
         Depense.objects.filter(date__range=(debut, fin)).aggregate(total=Sum("montant"))["total"]
         or ZERO
     )
     frais = livraisons["frais"] or ZERO
-    brut = (lignes["marge"] or ZERO) + frais - (livraisons["cout"] or ZERO)
+    ventes_produits = lignes["chiffre_affaires"] or ZERO
+    cout_produits = ventes_produits - (lignes["marge"] or ZERO)
+    cout_livraisons = livraisons["cout"] or ZERO
+    brut = (lignes["marge"] or ZERO) - remises + frais - cout_livraisons
     return {
-        "chiffre_affaires": (lignes["chiffre_affaires"] or ZERO) + frais,
+        "chiffre_affaires": ventes_produits - remises + frais,
+        "ventes_produits": ventes_produits,
+        "remises": remises,
+        "frais_livraison_factures": frais,
+        "cout_produits": cout_produits,
+        "cout_livraisons": cout_livraisons,
         "benefice_brut": brut,
         "depenses": depenses,
         "benefice_net": brut - depenses,
@@ -58,16 +67,38 @@ def calculer_resume(debut, fin):
 
 
 def rapport_produits(debut, fin):
-    return list(
-        lignes_livrees(debut, fin)
-        .values("idProduit__public_id", "idProduit__nomProduit")
-        .annotate(
-            quantite_vendue=Sum("quantite"),
-            chiffre_affaires=Sum(F("quantite") * F("prixUnitaire")),
-            benefice_brut=Sum(F("quantite") * (F("prixUnitaire") - F("coutUnitaire"))),
-        )
-        .order_by("idProduit__nomProduit")
-    )
+    resultats = {}
+    commandes = commandes_livrees(debut, fin).prefetch_related("lignes__idProduit")
+    for commande in commandes:
+        lignes = list(commande.lignes.all())
+        sous_total = sum((ligne.quantite * ligne.prixUnitaire for ligne in lignes), ZERO)
+        remise_restante = commande.remise
+        for index, ligne in enumerate(lignes):
+            ca_ligne = ligne.quantite * ligne.prixUnitaire
+            if index == len(lignes) - 1:
+                remise_ligne = remise_restante
+            elif sous_total:
+                remise_ligne = (commande.remise * ca_ligne / sous_total).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+                remise_restante -= remise_ligne
+            else:
+                remise_ligne = ZERO
+            ca_net = ca_ligne - remise_ligne
+            row = resultats.setdefault(
+                ligne.idProduit_id,
+                {
+                    "idProduit__public_id": ligne.idProduit.public_id,
+                    "idProduit__nomProduit": ligne.idProduit.nomProduit,
+                    "quantite_vendue": 0,
+                    "chiffre_affaires": ZERO,
+                    "benefice_brut": ZERO,
+                },
+            )
+            row["quantite_vendue"] += ligne.quantite
+            row["chiffre_affaires"] += ca_net
+            row["benefice_brut"] += ca_net - ligne.quantite * ligne.coutUnitaire
+    return sorted(resultats.values(), key=lambda row: row["idProduit__nomProduit"])
 
 
 def rapport_commandes(debut, fin):
@@ -86,8 +117,8 @@ def rapport_commandes(debut, fin):
                 "public_id": str(commande.public_id),
                 "client": commande.idClient.nomClient,
                 "date_livraison": livraison.dateLivraison,
-                "chiffre_affaires": ca + livraison.fraisFacture,
-                "benefice": marge + livraison.fraisFacture - livraison.cout,
+                "chiffre_affaires": ca - commande.remise + livraison.fraisFacture,
+                "benefice": marge - commande.remise + livraison.fraisFacture - livraison.cout,
             }
         )
     return rows
@@ -123,6 +154,15 @@ def rapport_mensuel(debut, fin):
             resultats[_month_date(row["mois"])]["benefice_brut"] += (row["frais"] or ZERO) - (
                 row["cout"] or ZERO
             )
+    remises = (
+        commandes_livrees(debut, fin)
+        .annotate(mois=TruncMonth("livraison__dateLivraison"))
+        .values("mois")
+        .annotate(total=Sum("remise"))
+    )
+    for row in remises:
+        if row["mois"]:
+            resultats[_month_date(row["mois"])]["benefice_brut"] -= row["total"] or ZERO
     depenses = (
         Depense.objects.filter(date__range=(debut, fin))
         .annotate(mois=TruncMonth("date"))

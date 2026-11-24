@@ -68,6 +68,18 @@ async function loadCookieJar() {
   await cookieLoadPromise;
 }
 
+export async function hasStoredSession() {
+  await loadCookieJar();
+  return Platform.OS === 'web' || /(?:^|;\s*)sessionid=/.test(cookie);
+}
+
+export async function clearStoredSession() {
+  cookie = '';
+  csrf = '';
+  cookieLoaded = true;
+  await saveCookieJar();
+}
+
 export async function getSessionCookieHeaders(): Promise<Record<string, string>> {
   await loadCookieJar();
   return cookie && Platform.OS !== 'web' ? { Cookie: cookie } : {};
@@ -161,7 +173,7 @@ export const getMyProfile = () => request<AuthUser>('/auth/me/');
 export const updateMyProfile = (fields: Partial<Pick<AuthUser, 'nom_complet'>>) => request<AuthUser>('/auth/me/', { method: 'PATCH', body: JSON.stringify(fields) });
 export async function logout() {
   try { await request<void>('/auth/logout/', { method: 'POST' }); }
-  finally { cookie = ''; csrf = ''; cookieLoaded = true; await saveCookieJar(); }
+  finally { await clearStoredSession(); }
 }
 export const requestPasswordReset = (email: string) => request<{ detail: string }>('/auth/password/reset/request/', { method: 'POST', body: JSON.stringify({ email }) });
 export const confirmPasswordReset = (uid: string, token: string, new_password: string) => request<{ detail: string }>('/auth/password/reset/confirm/', { method: 'POST', body: JSON.stringify({ uid, token, new_password }) });

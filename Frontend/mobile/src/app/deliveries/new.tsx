@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { api, fetchAll, type Client, type Commande, type Delivery } from '@/lib/session-api';
+import { api, fetchAll, type Client, type Commande, type Delivery, type Produit } from '@/lib/session-api';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { MotionPressable } from '@/components/motion';
 import { OptionSelect, toOptions } from '@/components/option-select';
+import { orderDisplayName } from '@/lib/order-display';
 
 export default function NewDeliveryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ order?: string }>();
   const [orders, setOrders] = useState<Commande[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [products, setProducts] = useState<Produit[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [selected, setSelected] = useState('');
   const [address, setAddress] = useState('');
@@ -26,21 +28,26 @@ export default function NewDeliveryScreen() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [deliveryList, orderList, clientList] = await Promise.all([
+      const [deliveryList, orderList, clientList, productList] = await Promise.all([
         fetchAll<Delivery>('/deliveries/'),
         fetchAll<Commande>('/orders/'),
         fetchAll<Client>('/clients/'),
+        fetchAll<Produit>('/products/'),
       ]);
       setDeliveries(deliveryList);
       setOrders(orderList);
       setClients(clientList);
+      setProducts(productList);
     } catch (e) { setError(e instanceof Error ? e.message : 'Chargement impossible.'); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
-  const availableOrders = orders.filter((order) => order.statut === 'confirmee' && !deliveries.some((delivery) => delivery.commande === order.public_id));
+  const availableOrders = useMemo(
+    () => orders.filter((order) => order.statut === 'confirmee' && !deliveries.some((delivery) => delivery.commande === order.public_id)),
+    [deliveries, orders],
+  );
   const order = orders.find((item) => item.public_id === selected);
   const client = clients.find((item) => item.public_id === order?.client);
 
@@ -51,7 +58,7 @@ export default function NewDeliveryScreen() {
     if (!nextOrder) return;
     setSelected(nextOrder.public_id);
     setAddress(clients.find((item) => item.public_id === nextOrder.client)?.adresse || '');
-  }, [clients, deliveries, orders, params.order]);
+  }, [availableOrders, clients, orders, params.order]);
 
   const create = async () => {
     if (!selected) { setError('Sélectionnez une commande confirmée.'); return; }
@@ -71,7 +78,7 @@ export default function NewDeliveryScreen() {
       {availableOrders.length
         ? <OptionSelect
             label="Commande à livrer"
-            options={toOptions(availableOrders, (item) => `Commande ${item.reference || item.public_id.slice(0, 8)}`, (item) => clients.find((clientItem) => clientItem.public_id === item.client)?.nomClient || item.statut)}
+            options={toOptions(availableOrders, (item) => orderDisplayName(item, clients, products), (item) => `Réf. ${item.reference}`)}
             value={selected}
             onChange={(value) => {
               setSelected(value);

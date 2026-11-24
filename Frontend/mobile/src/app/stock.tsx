@@ -5,14 +5,33 @@ import { api, fetchAll, type Movement, type Produit, type Stock } from '@/lib/se
 import { useAuth } from '@/lib/auth-context';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
-import { FadeIn } from '@/components/motion';
-import { LIST_PAGE_SIZE, ShowMore } from '@/components/show-more';
+import { FadeIn, MotionPressable } from '@/components/motion';
+import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 const MOVEMENTS_PER_PAGE = 15;
 type MovementFilter = 'all' | 'entries' | 'losses';
 
+const movementLabels: Record<string, string> = {
+  entree: 'Entrée',
+  sortie: 'Vente',
+  perte: 'Perte',
+  retour_client: 'Retour client',
+  retour_fournisseur: 'Retour fournisseur',
+  ajustement_positif: 'Correction à la hausse',
+  ajustement_negatif: 'Correction à la baisse',
+};
+
+function isStockIncrease(type: string) {
+  return ['entree', 'retour_client', 'ajustement_positif'].includes(type);
+}
+
 function formatDate(value: string) {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (dateOnly) {
+    const [, year, month, day] = dateOnly;
+    return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString('fr-FR', { dateStyle: 'medium' });
+  }
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
 }
@@ -25,7 +44,7 @@ export default function StockScreen() {
   const { user } = useAuth();
   const admin = user?.role === 'ADMIN' || user?.is_staff;
   const [items, setItems] = useState<Stock[]>([]);
-  const [stockLimit, setStockLimit] = useState(LIST_PAGE_SIZE);
+  const [stockPage, setStockPage] = useState(1);
   const [moves, setMoves] = useState<Movement[]>([]);
   const [movePage, setMovePage] = useState(1);
   const [movementQuery, setMovementQuery] = useState('');
@@ -46,7 +65,7 @@ export default function StockScreen() {
       setItems(stock);
       setMoves(movementList);
       setProducts(productList);
-      setStockLimit(LIST_PAGE_SIZE);
+      setStockPage(1);
       setMovePage(1);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Chargement impossible.');
@@ -67,12 +86,13 @@ export default function StockScreen() {
   const filteredMoves = useMemo(() => {
     const needle = movementQuery.trim().toLocaleLowerCase('fr-FR');
     return moves.filter((move) => {
-      const isEntry = move.typeMouvement === 'entree';
+      const isEntry = isStockIncrease(move.typeMouvement);
+      const isLoss = move.typeMouvement === 'perte';
       if (movementFilter === 'entries' && !isEntry) return false;
-      if (movementFilter === 'losses' && isEntry) return false;
+      if (movementFilter === 'losses' && !isLoss) return false;
       if (!needle) return true;
       const productName = products.find((item) => item.public_id === move.produit)?.nomProduit || '';
-      const haystack = [productName, move.motif, move.referenceOperation, formatDate(move.date), String(move.quantite), isEntry ? 'entrée entree' : 'perte sortie'].join(' ').toLocaleLowerCase('fr-FR');
+      const haystack = [productName, move.motif, move.referenceOperation, formatDate(move.date), String(move.quantite), movementLabels[move.typeMouvement] || move.typeMouvement].join(' ').toLocaleLowerCase('fr-FR');
       return haystack.includes(needle);
     });
   }, [moves, movementFilter, movementQuery, products]);
@@ -113,12 +133,14 @@ export default function StockScreen() {
       <View><Text style={styles.sectionTitle}>État du stock</Text><Text style={styles.sectionHint}>Les références sous le seuil sont signalées avec une alerte.</Text></View>
       <Pressable onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Actualiser le stock"><Text style={styles.refresh}>Actualiser</Text></Pressable>
     </View>
-    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : items.length === 0 ? <Text style={styles.empty}>Aucun niveau de stock à afficher.</Text> : orderedItems.slice(0, stockLimit).map((item, index) => {
+    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : items.length === 0 ? <Text style={styles.empty}>Aucun niveau de stock à afficher.</Text> : orderedItems.slice((stockPage - 1) * LIST_PAGE_SIZE, stockPage * LIST_PAGE_SIZE).map((item, index) => {
       const isLow = item.stock <= item.seuilAlerte;
       return <FadeIn key={item.public_id} delay={Math.min(index * 35, 280)}>
         <View style={styles.stockRow}>
           <View style={styles.stockInfo}>
-            <Text style={styles.productName}>{item.nomProduit}</Text>
+            {admin
+              ? <MotionPressable onPress={() => router.push({ pathname: '/products', params: { focus: item.public_id, open: '1' } })} accessibilityRole="link" accessibilityLabel={`Gérer ${item.nomProduit}`}><Text style={styles.productName}>{item.nomProduit} ›</Text></MotionPressable>
+              : <Text style={styles.productName}>{item.nomProduit}</Text>}
             <Text style={styles.threshold}>Seuil d’alerte : {item.seuilAlerte}</Text>
           </View>
           <View style={styles.stockValueWrap}>
@@ -128,7 +150,7 @@ export default function StockScreen() {
         </View>
       </FadeIn>;
     })}
-    {!loading && <ShowMore remaining={items.length - stockLimit} onPress={() => setStockLimit((current) => current + LIST_PAGE_SIZE)} />}
+    {!loading && <PageNavigation page={stockPage} totalItems={items.length} onPageChange={setStockPage} />}
 
     <View style={[styles.sectionHeading, styles.historyHeading]}>
       <View><Text style={styles.sectionTitle}>Historique récent</Text><Text style={styles.sectionHint}>Les derniers mouvements de stock enregistrés.</Text></View>
@@ -157,29 +179,26 @@ export default function StockScreen() {
       </Pressable>)}
     </View>
     {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : moves.length === 0 ? <Text style={styles.empty}>Aucun mouvement enregistré.</Text> : filteredMoves.length === 0 ? <Text style={styles.empty}>Aucun mouvement ne correspond à ces critères.</Text> : visibleMoves.map((move) => {
-      const isEntry = move.typeMouvement === 'entree';
+      const isEntry = isStockIncrease(move.typeMouvement);
+      const isLoss = move.typeMouvement === 'perte';
       const productName = products.find((item) => item.public_id === move.produit)?.nomProduit || `Produit ${move.produit.slice(0, 8)}`;
-      return <View key={move.public_id} style={styles.movementRow}>
-        <View style={[styles.movementIcon, isEntry ? styles.entryIcon : styles.lossIcon]}><Text style={[styles.movementSign, isEntry ? styles.entrySign : styles.lossSign]}>{isEntry ? '+' : '−'}</Text></View>
+      const rowContent = <>
+        <View style={[styles.movementIcon, isEntry ? styles.entryIcon : isLoss ? styles.lossIcon : styles.neutralIcon]}><Text style={[styles.movementSign, isEntry ? styles.entrySign : isLoss ? styles.lossSign : styles.neutralSign]}>{isEntry ? '+' : '−'}</Text></View>
         <View style={styles.movementInfo}>
           <Text style={styles.movementName}>{productName}</Text>
           <Text style={styles.movementDate}>{formatDate(move.date)}</Text>
+          {isLoss && !!move.motif && <Text style={styles.movementReason}>Motif : {move.motif}</Text>}
         </View>
         <View style={styles.movementAmountWrap}>
-          <Text style={[styles.movementAmount, !isEntry && styles.lowValue]}>{isEntry ? '+' : '−'}{move.quantite}</Text>
-          <Text style={styles.movementKind}>{isEntry ? 'Entrée' : 'Perte'}</Text>
+          <Text style={[styles.movementAmount, isLoss && styles.lowValue, !isEntry && !isLoss && styles.neutralSign]}>{isEntry ? '+' : '−'}{move.quantite}</Text>
+          <Text style={styles.movementKind}>{movementLabels[move.typeMouvement] || 'Mouvement'}</Text>
         </View>
-      </View>;
+      </>;
+      return admin
+        ? <MotionPressable key={move.public_id} style={styles.movementRow} onPress={() => router.push({ pathname: '/products', params: { focus: move.produit, open: '1' } })} accessibilityRole="link" accessibilityLabel={`Ouvrir la fiche de ${productName}`}>{rowContent}</MotionPressable>
+        : <View key={move.public_id} style={styles.movementRow}>{rowContent}</View>;
     })}
-    {!loading && filteredMoves.length > 0 && <View style={styles.pagination}>
-      <Pressable onPress={() => setMovePage((page) => Math.max(1, page - 1))} disabled={currentMovePage <= 1} style={[styles.pageButton, currentMovePage <= 1 && styles.pageButtonDisabled]} accessibilityRole="button" accessibilityLabel="Page précédente">
-        <Text style={styles.pageButtonText}>‹ Précédent</Text>
-      </Pressable>
-      <Text style={styles.pageIndicator}>Page {currentMovePage} sur {movePageCount}</Text>
-      <Pressable onPress={() => setMovePage((page) => Math.min(movePageCount, page + 1))} disabled={currentMovePage >= movePageCount} style={[styles.pageButton, currentMovePage >= movePageCount && styles.pageButtonDisabled]} accessibilityRole="button" accessibilityLabel="Page suivante">
-        <Text style={styles.pageButtonText}>Suivant ›</Text>
-      </Pressable>
-    </View>}
+    {!loading && filteredMoves.length > 0 && <PageNavigation page={currentMovePage} totalItems={filteredMoves.length} pageSize={MOVEMENTS_PER_PAGE} onPageChange={setMovePage} />}
   </ScrollView>;
 }
 
@@ -218,21 +237,19 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   filterButtonActive: { borderColor: t.tint, backgroundColor: t.tintSurface },
   filterText: { color: t.secondaryText, fontSize: 13, fontWeight: '600' },
   filterTextActive: { color: t.tint },
-  pagination: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4, marginBottom: 16 },
-  pageButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: t.separator, borderRadius: 11, backgroundColor: t.surface },
-  pageButtonDisabled: { opacity: 0.45 },
-  pageButtonText: { color: t.tint, fontSize: 13, fontWeight: '600' },
-  pageIndicator: { color: t.secondaryText, fontSize: 13, fontWeight: '600' },
   movementRow: { backgroundColor: t.surface, borderRadius: 14, padding: 13, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 11, borderColor: t.separator, borderWidth: 1 },
   movementIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   entryIcon: { backgroundColor: t.tintSurface },
   lossIcon: { backgroundColor: t.dangerSurface },
+  neutralIcon: { backgroundColor: t.background },
   movementSign: { fontSize: 20, fontWeight: '700' },
   entrySign: { color: t.tint },
   lossSign: { color: t.danger },
+  neutralSign: { color: t.secondaryText },
   movementInfo: { flex: 1 },
   movementName: { color: t.text, fontSize: 15, fontWeight: '600' },
   movementDate: { color: t.secondaryText, fontSize: 13, marginTop: 4 },
+  movementReason: { color: t.secondaryText, fontSize: 12, marginTop: 3 },
   movementAmountWrap: { alignItems: 'flex-end' },
   movementAmount: { color: t.tint, fontWeight: '700', fontSize: 15 },
   movementKind: { color: t.secondaryText, fontSize: 13, marginTop: 2 },

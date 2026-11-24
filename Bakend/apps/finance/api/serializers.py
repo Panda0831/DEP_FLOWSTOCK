@@ -8,6 +8,11 @@ from ..models import Depense, Paiement
 
 class ResumeFinancierSerializer(serializers.Serializer):
     chiffre_affaires = serializers.DecimalField(max_digits=18, decimal_places=2)
+    ventes_produits = serializers.DecimalField(max_digits=18, decimal_places=2)
+    remises = serializers.DecimalField(max_digits=18, decimal_places=2)
+    frais_livraison_factures = serializers.DecimalField(max_digits=18, decimal_places=2)
+    cout_produits = serializers.DecimalField(max_digits=18, decimal_places=2)
+    cout_livraisons = serializers.DecimalField(max_digits=18, decimal_places=2)
     benefice_brut = serializers.DecimalField(max_digits=18, decimal_places=2)
     depenses = serializers.DecimalField(max_digits=18, decimal_places=2)
     benefice_net = serializers.DecimalField(max_digits=18, decimal_places=2)

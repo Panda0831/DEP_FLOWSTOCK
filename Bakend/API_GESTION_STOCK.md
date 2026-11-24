@@ -326,17 +326,17 @@ Formules à appliquer :
 
 ```text
 Chiffre d'affaires =
-  somme des quantités × prix de vente + frais de livraison facturés
+  somme des quantités × prix de vente - remises + frais de livraison facturés
 
 Bénéfice brut =
   somme des quantités × (prix de vente - coût d'achat)
-  + frais de livraison facturés - coût de livraison
+  - remises + frais de livraison facturés - coût de livraison
 
 Bénéfice net =
   bénéfice brut - dépenses
 ```
 
-Ne compter que les commandes livrées et non annulées. Agréger les livraisons séparément des lignes de commande afin de ne pas compter plusieurs fois les frais de livraison.
+Ne compter que les commandes livrées et non annulées. Agréger les livraisons séparément des lignes de commande afin de ne pas compter plusieurs fois les frais de livraison. Les remises d'une commande sont réparties au prorata des ventes de ses produits dans le rapport par produit.
 
 ### 5.11. API Export Excel
 

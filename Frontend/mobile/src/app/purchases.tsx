@@ -7,7 +7,7 @@ import { FadeIn, MotionPressable } from '@/components/motion';
 import { FormDisclosure, useAutoOpenForm } from '@/components/form-disclosure';
 import { OptionSelect, toOptions } from '@/components/option-select';
 import { QuantityField } from '@/components/quantity-field';
-import { LIST_PAGE_SIZE, ShowMore } from '@/components/show-more';
+import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
 import { useAuth } from '@/lib/auth-context';
 import { api, fetchAll, type Produit, type Fournisseur, type Purchase } from '@/lib/session-api';
 
@@ -23,12 +23,12 @@ const OBTENTION_OPTIONS = [
 
 export default function PurchasesScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ focus?: string; step?: string; supplier?: string; product?: string }>();
+  const params = useLocalSearchParams<{ id?: string; focus?: string; step?: string; supplier?: string; product?: string; detail?: string }>();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN' || user?.is_staff;
   const autoOpen = useAutoOpenForm();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [purchaseLimit, setPurchaseLimit] = useState(LIST_PAGE_SIZE);
+  const [purchasePage, setPurchasePage] = useState(1);
   const [suppliers, setSuppliers] = useState<Fournisseur[]>([]);
   const [products, setProducts] = useState<Produit[]>([]);
   const [supplier, setSupplier] = useState('');
@@ -60,7 +60,7 @@ export default function PurchasesScreen() {
       setPurchases(purchaseList);
       setSuppliers(supplierList);
       setProducts(productList);
-      setPurchaseLimit(LIST_PAGE_SIZE);
+      setPurchasePage(1);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Chargement des achats impossible.');
     } finally {
@@ -190,17 +190,20 @@ export default function PurchasesScreen() {
     finally { setBusy(false); }
   };
 
-  const focusedId = typeof params.focus === 'string' ? params.focus : '';
+  const focusedId = typeof params.id === 'string' ? params.id : typeof params.focus === 'string' ? params.focus : '';
   const focusedPurchase = purchases.find((purchase) => purchase.public_id === focusedId);
-  const visiblePurchases = focusedId
-    ? [...purchases].sort((a, b) => Number(b.public_id === focusedId) - Number(a.public_id === focusedId)).slice(0, purchaseLimit)
-    : purchases.slice(0, purchaseLimit);
+  const detailMode = (!!params.id || params.detail === '1') && !!focusedPurchase;
+  const visiblePurchases = detailMode && focusedPurchase
+    ? [focusedPurchase]
+    : (focusedId
+      ? [...purchases].sort((a, b) => Number(b.public_id === focusedId) - Number(a.public_id === focusedId))
+      : purchases).slice((purchasePage - 1) * LIST_PAGE_SIZE, purchasePage * LIST_PAGE_SIZE);
 
   if (!isAdmin) return <ScrollView style={ui.page} contentContainerStyle={ui.content}><AppPageHeading title="Achats" subtitle="Cette section est réservée aux administrateurs." /></ScrollView>;
 
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
     <AppPageHeading title="Achats" subtitle="Commandez auprès de vos fournisseurs et réceptionnez les produits en plusieurs fois." />
-    <FormDisclosure label={editingPurchase ? `Modifier ${editingPurchase.reference}` : 'Nouvel achat'} openWhen={autoOpen ? '1' : (editingPurchase?.public_id ?? null)}>
+    {!detailMode && <FormDisclosure label={editingPurchase ? `Modifier ${editingPurchase.reference}` : 'Nouvel achat'} openWhen={autoOpen ? '1' : (editingPurchase?.public_id ?? null)}>
       <View style={ui.card}>
       {!suppliers.length && <MotionPressable onPress={() => router.push({ pathname: '/suppliers', params: { add: '1', flow: 'purchase' } })} accessibilityRole="link"><Text style={styles.helper}>Ajouter un fournisseur ›</Text></MotionPressable>}
       <OptionSelect label="Fournisseur" options={toOptions(suppliers, (item) => item.nomFournisseur)} value={supplier} onChange={setSupplier} placeholder="Choisir un fournisseur" />
@@ -229,8 +232,9 @@ export default function PurchasesScreen() {
       <Action label={busy ? 'Enregistrement…' : 'Enregistrer'} onPress={() => void savePurchase()} disabled={busy || !supplier || !lines.length} />
         {editingPurchase && <MotionPressable onPress={() => { setEditingPurchase(null); setSupplier(''); setLines([]); setLocation(''); setDetailsOpen(false); }} style={styles.cancel}><Text style={styles.cancelText}>Annuler la modification</Text></MotionPressable>}
       </View>
-    </FormDisclosure>
+    </FormDisclosure>}
     {!!error && <Text style={ui.error}>{error}</Text>}
+    {detailMode && <MotionPressable onPress={() => router.back()} style={styles.backLink} accessibilityRole="button"><Text style={styles.backText}>‹ Retour aux achats</Text></MotionPressable>}
     {!loading && focusedPurchase && <View style={styles.workflow}>
       <Text style={styles.workflowEyebrow}>{params.step === 'done' ? 'ACHAT TERMINÉ' : 'ÉTAPE SUIVANTE'}</Text>
       <Text style={styles.workflowTitle}>{focusedPurchase.reference}</Text>
@@ -240,17 +244,48 @@ export default function PurchasesScreen() {
           ? 'Saisissez les quantités réellement reçues dans cet achat. Le stock sera mis à jour à la réception.'
           : `Réception terminée. Solde restant : ${Number(focusedPurchase.solde_restant).toLocaleString('fr-FR')} Ar.`}</Text>
     </View>}
-    <View style={styles.sectionHeading}><Text style={ui.section}>Historique des achats</Text><MotionPressable onPress={() => void load()}><Text style={ui.refresh}>Actualiser</Text></MotionPressable></View>
+    <View style={styles.sectionHeading}><Text style={ui.section}>{detailMode ? 'Gérer l’achat' : 'Historique des achats'}</Text><MotionPressable onPress={() => void load()}><Text style={ui.refresh}>Actualiser</Text></MotionPressable></View>
     {loading ? <ActivityIndicator color="#11645D" style={{ marginVertical: 24 }} /> : purchases.length === 0 ? <Text style={ui.empty}>Aucun achat enregistré.</Text> : visiblePurchases.map((purchase, index) => <FadeIn key={purchase.public_id} delay={Math.min(index * 35, 280)}>
       <View style={[styles.purchase, purchase.public_id === focusedId && styles.purchaseFocused]}>
-        <View style={styles.purchaseHeader}><View><Text style={styles.purchaseTitle}>{purchase.reference}</Text><Text style={styles.purchaseSub}>{purchase.nomFournisseur} · {purchase.dateCommande}</Text></View><Text style={styles.badge}>{purchase.statut.replaceAll('_', ' ')}</Text></View>
+        <View style={styles.purchaseHeader}><View style={{ flex: 1 }}>{detailMode
+          ? <Text style={styles.purchaseTitle}>{purchase.reference}</Text>
+          : <MotionPressable onPress={() => router.push({ pathname: '/purchases/[id]', params: { id: purchase.public_id } })} accessibilityRole="link" accessibilityLabel={`Gérer l’achat ${purchase.reference}`}><Text style={styles.purchaseTitle}>{purchase.reference} ›</Text></MotionPressable>}
+          <MotionPressable onPress={() => router.push({ pathname: '/suppliers', params: { focus: purchase.supplier, open: '1' } })} accessibilityRole="link" accessibilityLabel="Ouvrir la fiche du fournisseur"><Text style={styles.purchaseSub}>{purchase.nomFournisseur} · {purchase.dateCommande} ›</Text></MotionPressable></View><View style={styles.purchaseActions}><Text style={styles.badge}>{purchase.statut.replaceAll('_', ' ')}</Text></View></View>
         {purchase.lignes.map((line) => {
           const restant = line.quantite - line.quantite_recue;
           return <View key={line.product} style={styles.purchaseLine}>
-            <View style={{ flex: 1 }}><Text style={styles.lineName}>{line.nomProduit}</Text><Text style={styles.lineDetail}>Reçu {line.quantite_recue} sur {line.quantite} · retourné {line.quantite_retournee}</Text></View>
+            <View style={{ flex: 1 }}><MotionPressable onPress={() => router.push({ pathname: '/products', params: { focus: line.product, open: '1' } })} accessibilityRole="link" accessibilityLabel={`Ouvrir la fiche ${line.nomProduit}`}><Text style={styles.lineName}>{line.nomProduit} ›</Text></MotionPressable><Text style={styles.lineDetail}>Reçu {line.quantite_recue} sur {line.quantite} · retourné {line.quantite_retournee}</Text></View>
             {(restant > 0 || (line.quantite_recue - line.quantite_retournee) > 0) && <View style={styles.quantityActions}>
-              {restant > 0 && <View style={styles.quantityAction}><Text style={styles.inputLabel}>À recevoir</Text><TextInput style={styles.receiveInput} value={receiveQuantities[purchase.public_id]?.[line.product] || ''} onChangeText={(value) => setReceiveQuantities((current) => ({ ...current, [purchase.public_id]: { ...current[purchase.public_id], [line.product]: value } }))} keyboardType="number-pad" placeholder={`Max. ${restant}`} placeholderTextColor="#526864" accessibilityLabel={`Quantité à recevoir pour ${line.nomProduit}, maximum ${restant}`} />}</View>}
-              {(line.quantite_recue - line.quantite_retournee) > 0 && <View style={styles.quantityAction}><Text style={styles.inputLabel}>À retourner</Text><TextInput style={styles.receiveInput} value={returnQuantities[purchase.public_id]?.[line.product] || ''} onChangeText={(value) => setReturnQuantities((current) => ({ ...current, [purchase.public_id]: { ...current[purchase.public_id], [line.product]: value } }))} keyboardType="number-pad" placeholder={`Max. ${line.quantite_recue - line.quantite_retournee}`} placeholderTextColor="#526864" accessibilityLabel={`Quantité à retourner pour ${line.nomProduit}, maximum ${line.quantite_recue - line.quantite_retournee}`} />}</View>}
+              {restant > 0 && <View style={styles.quantityAction}>
+                <Text style={styles.inputLabel}>À recevoir</Text>
+                <TextInput
+                  style={styles.receiveInput}
+                  value={receiveQuantities[purchase.public_id]?.[line.product] || ''}
+                  onChangeText={(value) => setReceiveQuantities((current) => ({
+                    ...current,
+                    [purchase.public_id]: { ...current[purchase.public_id], [line.product]: value },
+                  }))}
+                  keyboardType="number-pad"
+                  placeholder={`Max. ${restant}`}
+                  placeholderTextColor="#526864"
+                  accessibilityLabel={`Quantité à recevoir pour ${line.nomProduit}, maximum ${restant}`}
+                />
+              </View>}
+              {(line.quantite_recue - line.quantite_retournee) > 0 && <View style={styles.quantityAction}>
+                <Text style={styles.inputLabel}>À retourner</Text>
+                <TextInput
+                  style={styles.receiveInput}
+                  value={returnQuantities[purchase.public_id]?.[line.product] || ''}
+                  onChangeText={(value) => setReturnQuantities((current) => ({
+                    ...current,
+                    [purchase.public_id]: { ...current[purchase.public_id], [line.product]: value },
+                  }))}
+                  keyboardType="number-pad"
+                  placeholder={`Max. ${line.quantite_recue - line.quantite_retournee}`}
+                  placeholderTextColor="#526864"
+                  accessibilityLabel={`Quantité à retourner pour ${line.nomProduit}, maximum ${line.quantite_recue - line.quantite_retournee}`}
+                />
+              </View>}
             </View>}
           </View>;
         })}
@@ -266,11 +301,15 @@ export default function PurchasesScreen() {
         {purchase.statut === 'en_attente' && purchase.montant_paye === '0.00' && <MotionPressable onPress={() => void cancel(purchase)} disabled={busy} style={styles.cancel}><Text style={styles.cancelText}>Annuler</Text></MotionPressable>}
       </View>
     </FadeIn>)}
-    {!loading && <ShowMore remaining={purchases.length - purchaseLimit} onPress={() => setPurchaseLimit((current) => current + LIST_PAGE_SIZE)} />}
+    {!loading && !detailMode && <PageNavigation page={purchasePage} totalItems={purchases.length} onPageChange={setPurchasePage} />}
   </ScrollView>;
 }
 
 const styles = StyleSheet.create({
+  backLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingRight: 12 },
+  backText: { color: '#11645D', fontSize: 14, fontWeight: '600' },
+  purchaseActions: { alignItems: 'flex-end', gap: 4 },
+  manageLink: { color: '#11645D', fontSize: 13, fontWeight: '700', minHeight: 36, textAlignVertical: 'center' },
   fieldLabel: { color: '#18332F', fontSize: 14, fontWeight: '600', marginBottom: 6 },
   helper: { color: '#11645D', fontSize: 14, fontWeight: '600', marginBottom: 12 },
   workflow: { padding: 15, marginBottom: 18, borderRadius: 16, borderWidth: 1, borderColor: '#B9DCD4', backgroundColor: '#E5F2EF' },

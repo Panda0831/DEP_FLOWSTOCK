@@ -15,6 +15,11 @@
 
 ## À faire ensuite
 
+- [ ] Ajouter une recherche et des filtres simples dans les listes des livraisons et des achats (client/fournisseur, article, statut).
+- [ ] Remplacer la saisie manuelle des dates des rapports par des périodes prédéfinies (« Ce mois », « Mois dernier ») et un choix de dates personnalisé.
+- [ ] Permettre de lancer un réapprovisionnement directement depuis une alerte de stock, avec le produit déjà sélectionné.
+- [ ] Améliorer la lisibilité mobile : augmenter les textes secondaires trop petits et vérifier le contraste et l’affichage avec une grande taille de texte.
+- [ ] Afficher un message clair et une marche à suivre quand une connexion est temporairement bloquée après plusieurs échecs.
 - [x] Ajouter une CI GitHub Actions : contrôles Django, migrations, tests, Ruff, ESLint et TypeScript sur push et pull request.
 - [x] Ajouter la construction de l’image Docker backend à la CI; publier les images multi-architecture dans GHCR sur les tags `v*`.
 - [ ] Raccorder le déploiement automatique au VPS après choix de l’hébergeur et ajout de la configuration/secrets.

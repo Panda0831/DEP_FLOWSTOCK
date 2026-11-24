@@ -10,7 +10,7 @@ export default function ProductsScreen() {
   const router = useRouter();
   const t = useAppTheme();
   const styles = useMemo(() => makeStyles(t), [t]);
-  const params = useLocalSearchParams<{ flow?: string; client?: string; supplier?: string }>();
+  const params = useLocalSearchParams<{ flow?: string; client?: string; supplier?: string; focus?: string; open?: string }>();
   const { user } = useAuth();
   const admin = user?.role === 'ADMIN' || user?.is_staff;
   const [categories, setCategories] = useState<Categorie[]>([]);
@@ -60,6 +60,8 @@ export default function ProductsScreen() {
     itemMarker="PRD"
     canEdit={!!admin}
     searchable
+    focusId={typeof params.focus === 'string' ? params.focus : undefined}
+    openFocused={params.open === '1'}
     summary={summary}
     itemMetric={productMetric}
     onCreated={(item) => {

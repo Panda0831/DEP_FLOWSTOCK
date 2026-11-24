@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "axes",
+    "apps.core",
     "apps.accounts",
     "apps.catalog",
     "apps.inventory",

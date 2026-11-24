@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type PropsWithChildren } from 'react';
-import { getMyProfile, login, logout as logoutRequest, type AuthUser } from './session-api';
+import { clearStoredSession, getMyProfile, hasStoredSession, login, logout as logoutRequest, type AuthUser } from './session-api';
 
 type AuthContextValue = { user: AuthUser | null; isReady: boolean; signIn: (email: string, password: string) => Promise<AuthUser>; updateUser: (user: AuthUser) => void; signOut: () => Promise<void> };
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -9,8 +9,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let mounted = true;
     const restore = async () => {
-      try { const profile = await getMyProfile(); if (mounted) setUser(profile); }
-      catch { if (mounted) setUser(null); }
+      try {
+        if (!await hasStoredSession()) return;
+        const profile = await getMyProfile();
+        if (mounted) setUser(profile);
+      }
+      catch {
+        if (mounted) setUser(null);
+        await clearStoredSession();
+      }
       finally { if (mounted) setIsReady(true); }
     };
     void restore(); return () => { mounted = false; };

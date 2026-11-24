@@ -24,6 +24,8 @@ def test_reports_count_delivery_cost_once_and_exports_all_sheets():
         idUser=admin,
         date=date(2026, 1, 10),
         statut=Commande.Statut.CONFIRMEE,
+        remise=Decimal("2.00"),
+        fraisLivraison=Decimal("5.00"),
     )
     order.lignes.create(
         idProduit=product_a,
@@ -51,16 +53,28 @@ def test_reports_count_delivery_cost_once_and_exports_all_sheets():
     params = {"start_date": "2026-01-01", "end_date": "2026-01-31"}
     summary = client.get("/api/v1/reports/summary/", params)
     assert summary.status_code == 200
-    assert summary.data["chiffre_affaires"] == Decimal("45.00")
-    assert summary.data["benefice_brut"] == Decimal("18.00")
-    assert summary.data["benefice_net"] == Decimal("16.00")
+    assert summary.data["chiffre_affaires"] == Decimal("43.00")
+    assert summary.data["ventes_produits"] == Decimal("40.00")
+    assert summary.data["remises"] == Decimal("2.00")
+    assert summary.data["frais_livraison_factures"] == Decimal("5.00")
+    assert summary.data["cout_produits"] == Decimal("24.00")
+    assert summary.data["cout_livraisons"] == Decimal("3.00")
+    assert summary.data["benefice_brut"] == Decimal("16.00")
+    assert summary.data["benefice_net"] == Decimal("14.00")
 
-    assert client.get("/api/v1/reports/products/", params).status_code == 200
-    assert client.get("/api/v1/reports/orders/", params).data[0]["benefice"] == Decimal("18.00")
+    products = client.get("/api/v1/reports/products/", params)
+    assert products.status_code == 200
+    assert [row["chiffre_affaires"] for row in products.data] == [
+        Decimal("19.00"), Decimal("19.00")
+    ]
+    assert [row["benefice_brut"] for row in products.data] == [
+        Decimal("7.00"), Decimal("7.00")
+    ]
+    assert client.get("/api/v1/reports/orders/", params).data[0]["benefice"] == Decimal("16.00")
     monthly = client.get("/api/v1/reports/monthly/", params)
     assert monthly.status_code == 200
     assert monthly.data[0]["mois"] == date(2026, 1, 1)
-    assert monthly.data[0]["benefice_net"] == Decimal("16.00")
+    assert monthly.data[0]["benefice_net"] == Decimal("14.00")
 
     export = client.get("/api/v1/exports/excel/", params)
     assert export.status_code == 200

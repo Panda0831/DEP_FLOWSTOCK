@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { api, fetchAll, type Client, type Commande, type Delivery } from '@/lib/session-api';
+import { api, fetchAll, type Client, type Commande, type Delivery, type Produit } from '@/lib/session-api';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { FadeIn, MotionPressable } from '@/components/motion';
-import { LIST_PAGE_SIZE, ShowMore } from '@/components/show-more';
+import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
 import { DeliveryLocationMap, type DeliveryMapPoint } from '@/components/delivery-location-map';
+import { orderDisplayName } from '@/lib/order-display';
 
 export default function DeliveriesScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ focus?: string }>();
+  const params = useLocalSearchParams<{ id?: string; focus?: string; detail?: string }>();
   const [orders, setOrders] = useState<Commande[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [products, setProducts] = useState<Produit[]>([]);
   const [items, setItems] = useState<Delivery[]>([]);
-  const [deliveryLimit, setDeliveryLimit] = useState(LIST_PAGE_SIZE);
+  const [deliveryPage, setDeliveryPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -23,15 +25,17 @@ export default function DeliveriesScreen() {
     setLoading(true);
     setError('');
     try {
-      const [deliveryList, orderList, clientList] = await Promise.all([
+      const [deliveryList, orderList, clientList, productList] = await Promise.all([
         fetchAll<Delivery>('/deliveries/'),
         fetchAll<Commande>('/orders/'),
         fetchAll<Client>('/clients/'),
+        fetchAll<Produit>('/products/'),
       ]);
       setItems(deliveryList);
       setOrders(orderList);
       setClients(clientList);
-      setDeliveryLimit(LIST_PAGE_SIZE);
+      setProducts(productList);
+      setDeliveryPage(1);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Chargement impossible.');
     } finally {
@@ -53,12 +57,19 @@ export default function DeliveriesScreen() {
     finally { setBusy(false); }
   };
 
-  const orderName = (id: string) => orders.find((order) => order.public_id === id)?.public_id.slice(0, 8) || id.slice(0, 8);
-  const focusedId = typeof params.focus === 'string' ? params.focus : '';
+  const orderFor = (id: string) => orders.find((order) => order.public_id === id);
+  const orderName = (id: string) => {
+    const order = orderFor(id);
+    return order ? orderDisplayName(order, clients, products) : 'Commande';
+  };
+  const focusedId = typeof params.id === 'string' ? params.id : typeof params.focus === 'string' ? params.focus : '';
   const focusedDelivery = items.find((delivery) => delivery.public_id === focusedId);
-  const visibleDeliveries = focusedId
-    ? [...items].sort((a, b) => Number(b.public_id === focusedId) - Number(a.public_id === focusedId)).slice(0, deliveryLimit)
-    : items.slice(0, deliveryLimit);
+  const detailMode = (!!params.id || params.detail === '1') && !!focusedDelivery;
+  const visibleDeliveries = detailMode && focusedDelivery
+    ? [focusedDelivery]
+    : (focusedId
+      ? [...items].sort((a, b) => Number(b.public_id === focusedId) - Number(a.public_id === focusedId))
+      : items).slice((deliveryPage - 1) * LIST_PAGE_SIZE, deliveryPage * LIST_PAGE_SIZE);
   const clientFor = (delivery: Delivery) => {
     const linkedOrder = orders.find((order) => order.public_id === delivery.commande);
     return clients.find((client) => client.public_id === linkedOrder?.client);
@@ -78,7 +89,7 @@ export default function DeliveriesScreen() {
       if (!deliveryAddress && (!Number.isFinite(latitude) || !Number.isFinite(longitude))) continue;
       points.push({
         id: delivery.public_id,
-        title: `Commande ${delivery.commande.slice(0, 8)}`,
+        title: order ? orderDisplayName(order, clients, products) : 'Livraison',
         address: deliveryAddress,
         detail: `${delivery.statut.replace('_', ' ')} · ${Number(delivery.fraisFacture).toLocaleString('fr-FR')} Ar facturés`,
         latitude: Number.isFinite(latitude) ? latitude : undefined,
@@ -86,25 +97,27 @@ export default function DeliveriesScreen() {
       });
     }
     return points;
-  }, [clients, items, orders]);
+  }, [clients, items, orders, products]);
 
   return <ScrollView style={ui.page} contentContainerStyle={ui.content}>
     <AppPageHeading title="Livraisons" subtitle="Suivez les expéditions et mettez leur statut à jour." />
-    <View style={styles.createRow}><Action label="Nouvelle livraison" onPress={() => router.push('/deliveries/new')} /></View>
+    {!detailMode && <View style={styles.createRow}><Action label="Nouvelle livraison" onPress={() => router.push('/deliveries/new')} /></View>}
     {!!error && <Text style={ui.error}>{error}</Text>}
     {!loading && focusedDelivery && <View style={styles.workflow}>
-      <Text style={styles.workflowTitle}>{focusedDelivery.reference_commande || `Commande ${orderName(focusedDelivery.commande)}`}</Text>
+      <Text style={styles.workflowTitle}>{orderName(focusedDelivery.commande)}</Text>
+      <Text style={styles.workflowReference}>Référence : {focusedDelivery.reference_commande || focusedDelivery.commande.slice(0, 8)}</Text>
       <Text style={styles.workflowText}>{focusedDelivery.statut === 'en_cours' ? 'Prochaine étape : préparer la commande.'
         : focusedDelivery.statut === 'en_preparation' ? 'Prochaine étape : marquer la commande comme expédiée.'
         : focusedDelivery.statut === 'expediee' ? 'Prochaine étape : confirmer la livraison au client.'
         : focusedDelivery.statut === 'echec' ? 'La livraison a échoué. Vous pouvez la relancer.'
         : focusedDelivery.statut === 'livree' ? 'Livraison terminée.' : `Statut : ${focusedDelivery.statut.replaceAll('_', ' ')}.`}</Text>
     </View>}
-    <FadeIn delay={170}><DeliveryLocationMap points={locationPoints} /></FadeIn>
-    <View style={styles.sectionHeading}><Text style={ui.section}>Suivi des livraisons</Text><MotionPressable onPress={() => void load()}><Text style={ui.refresh}>Actualiser</Text></MotionPressable></View>
+    {!detailMode && <FadeIn delay={170}><DeliveryLocationMap points={locationPoints} /></FadeIn>}
+    {detailMode && <MotionPressable onPress={() => router.back()} style={styles.backLink} accessibilityRole="button"><Text style={styles.backText}>‹ Retour aux livraisons</Text></MotionPressable>}
+    <View style={styles.sectionHeading}><Text style={ui.section}>{detailMode ? 'Gérer la livraison' : 'Suivi des livraisons'}</Text><MotionPressable onPress={() => void load()}><Text style={ui.refresh}>Actualiser</Text></MotionPressable></View>
     {loading ? <ActivityIndicator color="#11645D" style={{ marginVertical: 24 }} /> : items.length === 0 ? <Text style={ui.empty}>Aucune livraison enregistrée.</Text> : visibleDeliveries.map((delivery, index) => <FadeIn key={delivery.public_id} delay={Math.min(index * 40, 280)}>
       <View style={[styles.row, delivery.public_id === focusedId && styles.rowFocused]}>
-        <View style={styles.deliveryTop}><View><Text style={styles.name}>{delivery.reference_commande || `Commande ${orderName(delivery.commande)}`}</Text><Text style={styles.detail}>Client : {clientFor(delivery)?.nomClient || delivery.client}</Text></View><Text style={[styles.status, delivery.statut === 'livree' && styles.statusDone]}>{delivery.statut.replaceAll('_', ' ')}</Text></View>
+        <View style={styles.deliveryTop}><View style={{ flex: 1 }}><MotionPressable onPress={() => router.push({ pathname: '/orders/[id]', params: { id: delivery.commande } })} accessibilityRole="link" accessibilityLabel={`Ouvrir la commande de ${orderName(delivery.commande)}`}><Text style={styles.name}>{orderName(delivery.commande)} ›</Text></MotionPressable><Text style={styles.detail}>Référence : {delivery.reference_commande || delivery.commande.slice(0, 8)}</Text></View><View style={styles.deliveryActions}><Text style={[styles.status, delivery.statut === 'livree' && styles.statusDone]}>{delivery.statut.replaceAll('_', ' ')}</Text>{!detailMode && <MotionPressable onPress={() => router.push({ pathname: '/deliveries/[id]', params: { id: delivery.public_id } })} accessibilityRole="link" accessibilityLabel={`Gérer la livraison de ${orderName(delivery.commande)}`}><Text style={styles.manageLink}>Gérer ›</Text></MotionPressable>}</View></View>
         {!!clientFor(delivery)?.contact && <Text style={styles.detail}>Contact : {clientFor(delivery)?.contact}</Text>}
         <Text style={styles.detail}>Adresse : {delivery.adresse?.trim() || clientFor(delivery)?.adresse || '—'}</Text>
         <Text style={styles.detail}>Commandes livrées du client : {deliveredCountFor(delivery)}</Text>
@@ -118,14 +131,19 @@ export default function DeliveriesScreen() {
         {delivery.statut === 'livree' && <View style={styles.actions}><MotionPressable onPress={() => void mark(delivery.public_id, 'mark-returned')} disabled={busy} style={styles.failButton}><Text style={styles.failText}>Retour</Text></MotionPressable></View>}
       </View>
     </FadeIn>)}
-    {!loading && <ShowMore remaining={items.length - deliveryLimit} onPress={() => setDeliveryLimit((current) => current + LIST_PAGE_SIZE)} />}
+    {!loading && !detailMode && <PageNavigation page={deliveryPage} totalItems={items.length} onPageChange={setDeliveryPage} />}
   </ScrollView>;
 }
 
 const styles = StyleSheet.create({
+  backLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingRight: 12 },
+  backText: { color: '#11645D', fontSize: 14, fontWeight: '600' },
+  deliveryActions: { alignItems: 'flex-end', gap: 4 },
+  manageLink: { color: '#11645D', fontSize: 13, fontWeight: '700', minHeight: 36, textAlignVertical: 'center' },
   createRow: { marginBottom: 16 },
   workflow: { padding: 15, marginBottom: 18, borderRadius: 16, borderWidth: 1, borderColor: '#B9DCD4', backgroundColor: '#E5F2EF' },
   workflowTitle: { color: '#18332F', fontSize: 16, fontWeight: '700' },
+  workflowReference: { color: '#526864', fontSize: 12, marginTop: 3 },
   workflowText: { color: '#526864', fontSize: 14, lineHeight: 20, marginTop: 5 },
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   row: { backgroundColor: '#FFFFFF', padding: 17, borderColor: '#DCE7E2', borderWidth: 1, borderRadius: 16, marginBottom: 11 },
