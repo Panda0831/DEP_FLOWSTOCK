@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, Te
 import { useRouter } from 'expo-router';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { Action, uiStyles as ui } from '@/components/resource-screen';
+import { Action, useUiStyles } from '@/components/resource-screen';
 import { useAuth } from '@/lib/auth-context';
 import { api, getApiBaseUrl, getSessionCookieHeaders } from '@/lib/session-api';
 import { AppPageHeading } from '@/components/page-heading';
@@ -32,6 +32,7 @@ function localDate(date: Date) {
 }
 
 export default function ReportsScreen() {
+  const ui = useUiStyles();
   const router = useRouter();
   const t = useAppTheme();
   const styles = useMemo(() => makeStyles(t), [t]);

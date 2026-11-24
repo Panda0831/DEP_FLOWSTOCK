@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api, fetchAll, type Movement, type Produit, type Stock } from '@/lib/session-api';
 import { useAuth } from '@/lib/auth-context';
-import { Action, uiStyles as ui } from '@/components/resource-screen';
+import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { FadeIn, MotionPressable } from '@/components/motion';
 import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
@@ -37,6 +37,7 @@ function formatDate(value: string) {
 }
 
 export default function StockScreen() {
+  const ui = useUiStyles();
   const router = useRouter();
   const params = useLocalSearchParams<{ product?: string; success?: string }>();
   const t = useAppTheme();

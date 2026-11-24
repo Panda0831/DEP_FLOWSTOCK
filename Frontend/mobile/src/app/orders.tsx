@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api, fetchAll, type Client, type Commande, type Delivery, type Produit } from '@/lib/session-api';
-import { Action, uiStyles as ui } from '@/components/resource-screen';
+import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { FadeIn, MotionPressable } from '@/components/motion';
 import { OptionSelect } from '@/components/option-select';
 import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
 import { orderDisplayName } from '@/lib/order-display';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 const PAYMENT_MODES = [
   { value: 'especes', label: 'Espèces' }, { value: 'mvola', label: 'MVola' },
@@ -42,6 +43,9 @@ function matchesCategory(status: string, category: (typeof ORDER_CATEGORIES)[num
 }
 
 export default function OrdersScreen() {
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
+  const ui = useUiStyles();
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string; focus?: string; step?: string; detail?: string }>();
   const [orders, setOrders] = useState<Commande[]>([]);
@@ -138,7 +142,7 @@ export default function OrdersScreen() {
       value={orderQuery}
       onChangeText={(value) => { setOrderQuery(value); setOrderPage(1); }}
       placeholder="Rechercher une référence ou un client"
-      placeholderTextColor="#526864"
+      placeholderTextColor={t.secondaryText}
       style={styles.search}
       accessibilityLabel="Rechercher une commande par référence ou client"
       returnKeyType="search"
@@ -158,7 +162,7 @@ export default function OrdersScreen() {
         </MotionPressable>;
       })}
     </View>}
-    {loading ? <ActivityIndicator color="#11645D" style={{ marginVertical: 24 }} /> : orders.length === 0 ? <Text style={ui.empty}>Aucune commande.</Text> : filteredOrders.length === 0 ? <Text style={ui.empty}>Aucune commande dans cette catégorie.</Text> : visibleOrders.map((order, index) => {
+    {loading ? <ActivityIndicator color={t.tint} style={{ marginVertical: 24 }} /> : orders.length === 0 ? <Text style={ui.empty}>Aucune commande.</Text> : filteredOrders.length === 0 ? <Text style={ui.empty}>Aucune commande dans cette catégorie.</Text> : visibleOrders.map((order, index) => {
       const canCancel = ['en_attente', 'confirmee', 'en_preparation'].includes(order.statut);
       const canPay = Number(order.solde_restant) > 0 && !['annulee', 'retournee'].includes(order.statut);
       const canRefund = order.statut === 'retournee' && Number(order.montant_paye) > 0;
@@ -181,23 +185,23 @@ export default function OrdersScreen() {
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({
-  createRow: { marginBottom: 16 }, label: { color: '#526864', fontSize: 12, marginTop: 6, marginBottom: 8 },
-  backLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingRight: 12 }, backText: { color: '#11645D', fontSize: 14, fontWeight: '600' },
-  orderActions: { alignItems: 'flex-end', gap: 4 }, manageLink: { color: '#11645D', fontSize: 13, fontWeight: '700', minHeight: 36, textAlignVertical: 'center' },
-  search: { minHeight: 48, borderWidth: 1, borderColor: '#DCE7E2', borderRadius: 12, paddingHorizontal: 14, fontSize: 15, color: '#18332F', backgroundColor: '#fff', marginBottom: 10 },
+const makeStyles = (t: AppTheme) => StyleSheet.create({
+  createRow: { marginBottom: 16 }, label: { color: t.secondaryText, fontSize: 12, marginTop: 6, marginBottom: 8 },
+  backLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingRight: 12 }, backText: { color: t.tint, fontSize: 14, fontWeight: '600' },
+  orderActions: { alignItems: 'flex-end', gap: 4 }, manageLink: { color: t.tint, fontSize: 13, fontWeight: '700', minHeight: 36, textAlignVertical: 'center' },
+  search: { minHeight: 48, borderWidth: 1, borderColor: t.separator, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, color: t.text, backgroundColor: t.surface, marginBottom: 10 },
   categoryList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  categoryButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: '#DCE7E2', borderRadius: 22, backgroundColor: '#fff' },
-  categoryButtonActive: { borderColor: '#11645D', backgroundColor: '#E5F2EF' },
-  categoryText: { color: '#526864', fontSize: 12, fontWeight: '600' },
-  categoryTextActive: { color: '#11645D' },
-  workflow: { padding: 16, marginBottom: 18, borderRadius: 16, borderWidth: 1, borderColor: '#B9DCD4', backgroundColor: '#E5F2EF' },
-  workflowEyebrow: { color: '#11645D', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
-  workflowTitle: { color: '#18332F', fontSize: 18, fontWeight: '700', marginTop: 5 },
-  workflowReference: { color: '#526864', fontSize: 12, marginTop: 3 },
-  workflowText: { color: '#526864', fontSize: 14, lineHeight: 20, marginTop: 5, marginBottom: 12 },
+  categoryButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: t.separator, borderRadius: 22, backgroundColor: t.surface },
+  categoryButtonActive: { borderColor: t.tint, backgroundColor: t.tintSurface },
+  categoryText: { color: t.secondaryText, fontSize: 12, fontWeight: '600' },
+  categoryTextActive: { color: t.tint },
+  workflow: { padding: 16, marginBottom: 18, borderRadius: 16, borderWidth: 1, borderColor: t.separator, backgroundColor: t.tintSurface },
+  workflowEyebrow: { color: t.tint, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  workflowTitle: { color: t.text, fontSize: 18, fontWeight: '700', marginTop: 5 },
+  workflowReference: { color: t.secondaryText, fontSize: 12, marginTop: 3 },
+  workflowText: { color: t.secondaryText, fontSize: 14, lineHeight: 20, marginTop: 5, marginBottom: 12 },
   workflowAction: { marginTop: 8 },
-  inline: { flexDirection: 'row', alignItems: 'center', gap: 9 }, money: { flex: 1, minWidth: 0 }, lineDetail: { color: '#526864', fontSize: 11, marginTop: 5 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 10, paddingTop: 9, borderTopWidth: 1, borderTopColor: '#EEF2EE' }, totalLabel: { color: '#526864', fontSize: 11, fontWeight: '600' }, totalValue: { color: '#18332F', fontSize: 13, fontWeight: '800' }, sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  order: { backgroundColor: '#fff', borderColor: '#DCE7E2', borderWidth: 1, borderRadius: 15, padding: 15, marginBottom: 10 }, orderFocused: { borderColor: '#11645D', borderWidth: 2 }, orderTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }, orderName: { color: '#18332F', fontWeight: '800', fontSize: 14 }, status: { color: '#80520B', backgroundColor: '#FFF3D9', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 9, fontSize: 12, fontWeight: '700', textTransform: 'capitalize' }, confirmed: { color: '#11645D', backgroundColor: '#E5F2EF' }, detail: { color: '#526864', fontSize: 11, marginTop: 5 }, paymentHistory: { color: '#526864', fontSize: 12, marginTop: 5 }, paymentBox: { borderTopWidth: 1, borderTopColor: '#EEF2EE', paddingTop: 7, marginTop: 10 }, actions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 }, cancelButton: { borderColor: '#DFAAAA', borderWidth: 1, paddingVertical: 11, paddingHorizontal: 14, borderRadius: 12 }, cancel: { alignSelf: 'flex-start', marginTop: 12 }, cancelText: { color: '#A43D32', fontWeight: '700', fontSize: 12 },
+  inline: { flexDirection: 'row', alignItems: 'center', gap: 9 }, money: { flex: 1, minWidth: 0 }, lineDetail: { color: t.secondaryText, fontSize: 11, marginTop: 5 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 10, paddingTop: 9, borderTopWidth: 1, borderTopColor: t.separator }, totalLabel: { color: t.secondaryText, fontSize: 11, fontWeight: '600' }, totalValue: { color: t.text, fontSize: 13, fontWeight: '800' }, sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  order: { backgroundColor: t.surface, borderColor: t.separator, borderWidth: 1, borderRadius: 15, padding: 15, marginBottom: 10 }, orderFocused: { borderColor: t.tint, borderWidth: 2 }, orderTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }, orderName: { color: t.text, fontWeight: '800', fontSize: 14 }, status: { color: t.warning, backgroundColor: t.warningSurface, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 9, fontSize: 12, fontWeight: '700', textTransform: 'capitalize' }, confirmed: { color: t.tint, backgroundColor: t.tintSurface }, detail: { color: t.secondaryText, fontSize: 11, marginTop: 5 }, paymentHistory: { color: t.secondaryText, fontSize: 12, marginTop: 5 }, paymentBox: { borderTopWidth: 1, borderTopColor: t.separator, paddingTop: 7, marginTop: 10 }, actions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 }, cancelButton: { borderColor: t.danger, borderWidth: 1, paddingVertical: 11, paddingHorizontal: 14, borderRadius: 12 }, cancel: { alignSelf: 'flex-start', marginTop: 12 }, cancelText: { color: t.danger, fontWeight: '700', fontSize: 12 },
 });

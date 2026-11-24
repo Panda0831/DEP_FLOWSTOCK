@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -8,10 +8,11 @@ import { useAuth } from '@/lib/auth-context';
 import { changeMyPassword } from '@/lib/session-api';
 import { BrandLockup } from '@/components/brand-lockup';
 import { BrandDivider, FadeIn, MotionPressable } from '@/components/motion';
-
-const GREEN = '#11645D';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 export default function ChangePasswordScreen() {
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
   const router = useRouter();
   const { isReady, user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
@@ -50,14 +51,14 @@ export default function ChangePasswordScreen() {
   if (!isReady || (!user && !isComplete)) {
     return (
       <SafeAreaView style={styles.loading}>
-        <ActivityIndicator color={GREEN} size="large" />
+        <ActivityIndicator color={t.tint} size="large" />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <StatusBar style="dark" />
+      <StatusBar style="auto" />
       <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <FadeIn style={styles.content}>
@@ -75,7 +76,7 @@ export default function ChangePasswordScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Saisissez votre mot de passe actuel"
-                  placeholderTextColor="#7B8190"
+                  placeholderTextColor={t.secondaryText}
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
                   secureTextEntry
@@ -86,7 +87,7 @@ export default function ChangePasswordScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Saisissez un nouveau mot de passe"
-                  placeholderTextColor="#7B8190"
+                  placeholderTextColor={t.secondaryText}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry
@@ -97,7 +98,7 @@ export default function ChangePasswordScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Saisissez-le une seconde fois"
-                  placeholderTextColor="#7B8190"
+                  placeholderTextColor={t.secondaryText}
                   value={confirmation}
                   onChangeText={setConfirmation}
                   secureTextEntry
@@ -112,7 +113,7 @@ export default function ChangePasswordScreen() {
               disabled={isLoading}
               style={styles.button}>
               {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={t.onTint} />
               ) : (
                 <Text style={styles.buttonText}>{isComplete ? 'Continuer' : 'Modifier le mot de passe'}</Text>
               )}
@@ -124,19 +125,19 @@ export default function ChangePasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8F5' },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F8F5' },
+const makeStyles = (t: AppTheme) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: t.background },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.background },
   keyboard: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  content: { width: '100%', maxWidth: 430, alignSelf: 'center', backgroundColor: '#FFFFFF', padding: 24, borderRadius: 22, borderWidth: 1, borderColor: '#DCE7E2', shadowColor: '#38704A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 2 },
+  content: { width: '100%', maxWidth: 430, alignSelf: 'center', backgroundColor: t.surface, padding: 24, borderRadius: 22, borderWidth: 1, borderColor: t.separator, shadowColor: '#38704A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 2 },
   brand: { alignItems: 'center', marginBottom: 8 },
-  title: { color: '#18332F', fontSize: 28, fontWeight: '800', textAlign: 'center' },
-  subtitle: { color: '#65736A', fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 9, marginBottom: 19 },
+  title: { color: t.text, fontSize: 28, fontWeight: '800', textAlign: 'center' },
+  subtitle: { color: t.secondaryText, fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 9, marginBottom: 19 },
   form: { gap: 0 },
-  fieldLabel: { color: '#4F5A52', fontSize: 12, fontWeight: '700', marginBottom: 7, marginTop: 11 },
-  input: { height: 54, borderWidth: 1, borderColor: '#D9E3DB', borderRadius: 14, paddingHorizontal: 16, fontSize: 15, color: '#18332F', backgroundColor: '#FBFDFB' },
-  error: { color: '#A33B31', fontSize: 13, lineHeight: 18, marginTop: 14, padding: 11, borderRadius: 11, backgroundColor: '#FFF0EF' },
-  button: { height: 56, backgroundColor: GREEN, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 22 },
-  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', textAlign: 'center', paddingHorizontal: 12 },
+  fieldLabel: { color: t.text, fontSize: 12, fontWeight: '700', marginBottom: 7, marginTop: 11 },
+  input: { height: 54, borderWidth: 1, borderColor: t.separator, borderRadius: 14, paddingHorizontal: 16, fontSize: 15, color: t.text, backgroundColor: t.surface },
+  error: { color: t.danger, fontSize: 13, lineHeight: 18, marginTop: 14, padding: 11, borderRadius: 11, backgroundColor: t.dangerSurface },
+  button: { height: 56, backgroundColor: t.tint, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 22 },
+  buttonText: { color: t.onTint, fontSize: 16, fontWeight: '700', textAlign: 'center', paddingHorizontal: 12 },
 });

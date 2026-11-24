@@ -30,24 +30,27 @@ function formatResourceValue(key: string, value: unknown) {
   return String(value);
 }
 
-/** Shared surface styles. Other screens reuse these so one change updates them all. */
-export const uiStyles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#F3F7F5' },
-  content: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 20, paddingBottom: 32 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: Radius.card, borderWidth: 1, borderColor: '#DCE7E2', padding: 16, marginBottom: 20 },
-  cardTitle: { ...Type.headline, color: '#18332F' },
-  cardDescription: { ...Type.footnote, color: '#526864', marginTop: 4, marginBottom: 16 },
-  input: { minHeight: HitSize, borderWidth: 1, borderColor: '#DCE7E2', borderRadius: Radius.control, paddingHorizontal: 14, fontSize: Type.body.fontSize, color: '#18332F', marginBottom: 12, backgroundColor: '#FFFFFF' },
-  section: { ...Type.headline, color: '#18332F' },
-  refresh: { color: '#11645D', fontSize: 15, fontWeight: '600', minHeight: HitSize, textAlignVertical: 'center' },
-  empty: { color: '#526864', fontSize: 15, textAlign: 'center', marginVertical: 32 },
-  error: { color: '#A43D32', fontSize: 14, lineHeight: 20, marginBottom: 12 },
-  button: { minHeight: HitSize, paddingHorizontal: 20, backgroundColor: '#11645D', borderRadius: Radius.control, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-});
+export function useUiStyles() {
+  const t = useAppTheme();
+  return useMemo(() => StyleSheet.create({
+    page: { flex: 1, backgroundColor: t.background },
+    content: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 20, paddingBottom: 32 },
+    card: { backgroundColor: t.surface, borderRadius: Radius.card, borderWidth: 1, borderColor: t.separator, padding: 16, marginBottom: 20 },
+    cardTitle: { ...Type.headline, color: t.text },
+    cardDescription: { ...Type.footnote, color: t.secondaryText, marginTop: 4, marginBottom: 16 },
+    input: { minHeight: HitSize, borderWidth: 1, borderColor: t.separator, borderRadius: Radius.control, paddingHorizontal: 14, fontSize: Type.body.fontSize, color: t.text, marginBottom: 12, backgroundColor: t.surface },
+    section: { ...Type.headline, color: t.text },
+    refresh: { color: t.tint, fontSize: 15, fontWeight: '600', minHeight: HitSize, textAlignVertical: 'center' as const },
+    empty: { color: t.secondaryText, fontSize: 15, textAlign: 'center' as const, marginVertical: 32 },
+    error: { color: t.danger, fontSize: 14, lineHeight: 20, marginBottom: 12 },
+    button: { minHeight: HitSize, paddingHorizontal: 20, backgroundColor: t.tint, borderRadius: Radius.control, alignItems: 'center' as const, justifyContent: 'center' as const },
+    buttonText: { color: t.onTint, fontSize: 15, fontWeight: '600' as const },
+  }), [t]);
+}
 
 export function Action({ label, onPress, disabled, variant = 'primary' }: { label: string; onPress: () => void; disabled?: boolean; variant?: 'primary' | 'secondary' | 'danger' }) {
   const t = useAppTheme();
+  const uiStyles = useUiStyles();
   const secondary = variant === 'secondary';
   const danger = variant === 'danger';
   return (
@@ -105,6 +108,7 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
   const router = useRouter();
   const t = useAppTheme();
   const styles = useMemo(() => makeStyles(t), [t]);
+  const uiStyles = useUiStyles();
   const [items, setItems] = useState<ResourceItem[]>([]);
   const [page, setPage] = useState(1);
   const [values, setValues] = useState<Record<string, string>>({});

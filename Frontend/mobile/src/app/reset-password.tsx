@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -7,10 +7,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { confirmPasswordReset } from '@/lib/session-api';
 import { BrandLockup } from '@/components/brand-lockup';
 import { BrandDivider, FadeIn, MotionPressable } from '@/components/motion';
-
-const GREEN = '#11645D';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 export default function ResetPasswordScreen() {
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
   const router = useRouter();
   const params = useLocalSearchParams<{ uid?: string | string[]; token?: string | string[] }>();
   const uid = Array.isArray(params.uid) ? params.uid[0] : params.uid;
@@ -50,7 +51,7 @@ export default function ResetPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <StatusBar style="dark" />
+      <StatusBar style="auto" />
       <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <FadeIn style={styles.content}>
@@ -68,7 +69,7 @@ export default function ResetPasswordScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Saisissez un nouveau mot de passe"
-                  placeholderTextColor="#7B8190"
+                  placeholderTextColor={t.secondaryText}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry
@@ -79,7 +80,7 @@ export default function ResetPasswordScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Saisissez-le une seconde fois"
-                  placeholderTextColor="#7B8190"
+                  placeholderTextColor={t.secondaryText}
                   value={confirmation}
                   onChangeText={setConfirmation}
                   secureTextEntry
@@ -94,7 +95,7 @@ export default function ResetPasswordScreen() {
               disabled={isLoading}
               style={styles.button}>
               {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={t.onTint} />
               ) : (
                 <Text style={styles.buttonText}>{isComplete ? 'Retour à la connexion' : 'Réinitialiser le mot de passe'}</Text>
               )}
@@ -111,21 +112,21 @@ export default function ResetPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F8F5' },
+const makeStyles = (t: AppTheme) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: t.background },
   keyboard: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  content: { width: '100%', maxWidth: 430, alignSelf: 'center', backgroundColor: '#FFFFFF', padding: 24, borderRadius: 22, borderWidth: 1, borderColor: '#DCE7E2', shadowColor: '#38704A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 2 },
+  content: { width: '100%', maxWidth: 430, alignSelf: 'center', backgroundColor: t.surface, padding: 24, borderRadius: 22, borderWidth: 1, borderColor: t.separator, shadowColor: '#38704A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 2 },
   brand: { alignItems: 'center', marginBottom: 8 },
-  title: { color: '#18332F', fontSize: 28, fontWeight: '800', textAlign: 'center' },
-  subtitle: { color: '#65736A', fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 9, marginBottom: 22 },
+  title: { color: t.text, fontSize: 28, fontWeight: '800', textAlign: 'center' },
+  subtitle: { color: t.secondaryText, fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 9, marginBottom: 22 },
   form: { gap: 0 },
-  fieldLabel: { color: '#4F5A52', fontSize: 12, fontWeight: '700', marginBottom: 7, marginTop: 11 },
-  input: { height: 54, borderWidth: 1, borderColor: '#D9E3DB', borderRadius: 14, paddingHorizontal: 16, fontSize: 15, color: '#18332F', backgroundColor: '#FBFDFB' },
-  message: { color: '#A33B31', fontSize: 13, lineHeight: 18, marginTop: 14, padding: 11, borderRadius: 11, backgroundColor: '#FFF0EF' },
-  success: { color: '#11645D', backgroundColor: '#E5F2EF' },
-  button: { minHeight: 56, paddingHorizontal: 12, backgroundColor: GREEN, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 22 },
-  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  fieldLabel: { color: t.text, fontSize: 12, fontWeight: '700', marginBottom: 7, marginTop: 11 },
+  input: { height: 54, borderWidth: 1, borderColor: t.separator, borderRadius: 14, paddingHorizontal: 16, fontSize: 15, color: t.text, backgroundColor: t.surface },
+  message: { color: t.danger, fontSize: 13, lineHeight: 18, marginTop: 14, padding: 11, borderRadius: 11, backgroundColor: t.dangerSurface },
+  success: { color: t.tint, backgroundColor: t.tintSurface },
+  button: { minHeight: 56, paddingHorizontal: 12, backgroundColor: t.tint, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 22 },
+  buttonText: { color: t.onTint, fontSize: 16, fontWeight: '700', textAlign: 'center' },
   backButton: { marginTop: 14, alignItems: 'center', padding: 8 },
-  backText: { color: GREEN, fontSize: 15, fontWeight: '700' },
+  backText: { color: t.tint, fontSize: 15, fontWeight: '700' },
 });

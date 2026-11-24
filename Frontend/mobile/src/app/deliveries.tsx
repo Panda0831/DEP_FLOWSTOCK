@@ -2,14 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api, fetchAll, type Client, type Commande, type Delivery, type Produit } from '@/lib/session-api';
-import { Action, uiStyles as ui } from '@/components/resource-screen';
+import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { FadeIn, MotionPressable } from '@/components/motion';
 import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
 import { DeliveryLocationMap, type DeliveryMapPoint } from '@/components/delivery-location-map';
 import { orderDisplayName } from '@/lib/order-display';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 export default function DeliveriesScreen() {
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
+  const ui = useUiStyles();
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string; focus?: string; detail?: string }>();
   const [orders, setOrders] = useState<Commande[]>([]);
@@ -115,7 +119,7 @@ export default function DeliveriesScreen() {
     {!detailMode && <FadeIn delay={170}><DeliveryLocationMap points={locationPoints} /></FadeIn>}
     {detailMode && <MotionPressable onPress={() => router.back()} style={styles.backLink} accessibilityRole="button"><Text style={styles.backText}>‹ Retour aux livraisons</Text></MotionPressable>}
     <View style={styles.sectionHeading}><Text style={ui.section}>{detailMode ? 'Gérer la livraison' : 'Suivi des livraisons'}</Text><MotionPressable onPress={() => void load()}><Text style={ui.refresh}>Actualiser</Text></MotionPressable></View>
-    {loading ? <ActivityIndicator color="#11645D" style={{ marginVertical: 24 }} /> : items.length === 0 ? <Text style={ui.empty}>Aucune livraison enregistrée.</Text> : visibleDeliveries.map((delivery, index) => <FadeIn key={delivery.public_id} delay={Math.min(index * 40, 280)}>
+    {loading ? <ActivityIndicator color={t.tint} style={{ marginVertical: 24 }} /> : items.length === 0 ? <Text style={ui.empty}>Aucune livraison enregistrée.</Text> : visibleDeliveries.map((delivery, index) => <FadeIn key={delivery.public_id} delay={Math.min(index * 40, 280)}>
       <View style={[styles.row, delivery.public_id === focusedId && styles.rowFocused]}>
         <View style={styles.deliveryTop}><View style={{ flex: 1 }}><MotionPressable onPress={() => router.push({ pathname: '/orders/[id]', params: { id: delivery.commande } })} accessibilityRole="link" accessibilityLabel={`Ouvrir la commande de ${orderName(delivery.commande)}`}><Text style={styles.name}>{orderName(delivery.commande)} ›</Text></MotionPressable><Text style={styles.detail}>Référence : {delivery.reference_commande || delivery.commande.slice(0, 8)}</Text></View><View style={styles.deliveryActions}><Text style={[styles.status, delivery.statut === 'livree' && styles.statusDone]}>{delivery.statut.replaceAll('_', ' ')}</Text>{!detailMode && <MotionPressable onPress={() => router.push({ pathname: '/deliveries/[id]', params: { id: delivery.public_id } })} accessibilityRole="link" accessibilityLabel={`Gérer la livraison de ${orderName(delivery.commande)}`}><Text style={styles.manageLink}>Gérer ›</Text></MotionPressable>}</View></View>
         {!!clientFor(delivery)?.contact && <Text style={styles.detail}>Contact : {clientFor(delivery)?.contact}</Text>}
@@ -135,27 +139,27 @@ export default function DeliveriesScreen() {
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   backLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingRight: 12 },
-  backText: { color: '#11645D', fontSize: 14, fontWeight: '600' },
+  backText: { color: t.tint, fontSize: 14, fontWeight: '600' },
   deliveryActions: { alignItems: 'flex-end', gap: 4 },
-  manageLink: { color: '#11645D', fontSize: 13, fontWeight: '700', minHeight: 36, textAlignVertical: 'center' },
+  manageLink: { color: t.tint, fontSize: 13, fontWeight: '700', minHeight: 36, textAlignVertical: 'center' },
   createRow: { marginBottom: 16 },
-  workflow: { padding: 15, marginBottom: 18, borderRadius: 16, borderWidth: 1, borderColor: '#B9DCD4', backgroundColor: '#E5F2EF' },
-  workflowTitle: { color: '#18332F', fontSize: 16, fontWeight: '700' },
-  workflowReference: { color: '#526864', fontSize: 12, marginTop: 3 },
-  workflowText: { color: '#526864', fontSize: 14, lineHeight: 20, marginTop: 5 },
+  workflow: { padding: 15, marginBottom: 18, borderRadius: 16, borderWidth: 1, borderColor: t.separator, backgroundColor: t.tintSurface },
+  workflowTitle: { color: t.text, fontSize: 16, fontWeight: '700' },
+  workflowReference: { color: t.secondaryText, fontSize: 12, marginTop: 3 },
+  workflowText: { color: t.secondaryText, fontSize: 14, lineHeight: 20, marginTop: 5 },
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  row: { backgroundColor: '#FFFFFF', padding: 17, borderColor: '#DCE7E2', borderWidth: 1, borderRadius: 16, marginBottom: 11 },
-  rowFocused: { borderColor: '#11645D', borderWidth: 2 },
+  row: { backgroundColor: t.surface, padding: 17, borderColor: t.separator, borderWidth: 1, borderRadius: 16, marginBottom: 11 },
+  rowFocused: { borderColor: t.tint, borderWidth: 2 },
   deliveryTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  name: { fontWeight: '800', color: '#18332F', fontSize: 14 },
-  status: { color: '#11645D', backgroundColor: '#E5F2EF', paddingVertical: 5, paddingHorizontal: 9, borderRadius: 10, fontSize: 12, fontWeight: '800', textTransform: 'capitalize' },
-  statusDone: { color: '#11645D' },
-  detail: { color: '#748078', fontSize: 12, marginTop: 10 },
+  name: { fontWeight: '800', color: t.text, fontSize: 14 },
+  status: { color: t.tint, backgroundColor: t.tintSurface, paddingVertical: 5, paddingHorizontal: 9, borderRadius: 10, fontSize: 12, fontWeight: '800', textTransform: 'capitalize' },
+  statusDone: { color: t.tint },
+  detail: { color: t.secondaryText, fontSize: 12, marginTop: 10 },
   amounts: { flexDirection: 'row', gap: 15, marginTop: 9 },
-  amount: { color: '#66716A', fontSize: 11, fontWeight: '600' },
+  amount: { color: t.secondaryText, fontSize: 11, fontWeight: '600' },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 },
-  failButton: { borderWidth: 1, borderColor: '#DFAAAA', paddingVertical: 11, paddingHorizontal: 14, borderRadius: 12 },
-  failText: { color: '#A43D32', fontWeight: '700', fontSize: 12 },
+  failButton: { borderWidth: 1, borderColor: t.danger, paddingVertical: 11, paddingHorizontal: 14, borderRadius: 12 },
+  failText: { color: t.danger, fontWeight: '700', fontSize: 12 },
 });

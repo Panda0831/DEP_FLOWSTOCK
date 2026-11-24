@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { api, fetchAll, type Client, type Commande, type Produit } from '@/lib/session-api';
 import { useAuth } from '@/lib/auth-context';
-import { Action, uiStyles as ui } from '@/components/resource-screen';
+import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { MotionPressable } from '@/components/motion';
 import { OptionSelect, toOptions } from '@/components/option-select';
 import { QuantityField } from '@/components/quantity-field';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 type DraftLine = { product: string; quantity: string };
 
 export default function NewOrderScreen() {
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
+  const ui = useUiStyles();
   const router = useRouter();
   const params = useLocalSearchParams<{ client?: string; product?: string }>();
   const { user } = useAuth();
@@ -84,7 +88,7 @@ export default function NewOrderScreen() {
 
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
     <AppPageHeading title="Nouvelle commande" subtitle="Choisissez un client, puis ajoutez les articles à vendre." />
-    {loading ? <ActivityIndicator color="#11645D" style={styles.loader} /> : <View style={ui.card}>
+    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : <View style={ui.card}>
       <Text style={styles.sectionTitle}>1. Client</Text>
       <OptionSelect label="Client" options={toOptions(clients, (item) => item.nomClient, (item) => item.contact)} value={client} onChange={setClient} placeholder="Choisir un client" />
       {!clients.length && <MotionPressable onPress={() => router.push({ pathname: '/clients', params: { flow: 'order' } })} accessibilityRole="link"><Text style={styles.helper}>Ajouter un client ›</Text></MotionPressable>}
@@ -105,9 +109,9 @@ export default function NewOrderScreen() {
       </MotionPressable>
       {extraOpen && <View style={styles.extraFields}>
         <Text style={styles.fieldLabel}>Remise (Ar)</Text>
-        <TextInput style={ui.input} value={discount} onChangeText={setDiscount} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#526864" />
+        <TextInput style={ui.input} value={discount} onChangeText={setDiscount} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={t.secondaryText} />
         <Text style={styles.fieldLabel}>Frais de livraison (Ar)</Text>
-        <TextInput style={ui.input} value={deliveryFee} onChangeText={setDeliveryFee} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#526864" />
+        <TextInput style={ui.input} value={deliveryFee} onChangeText={setDeliveryFee} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={t.secondaryText} />
       </View>}
       <View style={styles.totalRow}><Text style={styles.totalLabel}>Total estimé</Text><Text style={styles.totalValue}>{total.toLocaleString('fr-FR')} Ar</Text></View>
       {!!error && <Text accessibilityRole="alert" style={ui.error}>{error}</Text>}
@@ -116,22 +120,22 @@ export default function NewOrderScreen() {
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   loader: { marginVertical: 32 },
-  helper: { color: '#11645D', fontSize: 14, fontWeight: '600', marginTop: -4, marginBottom: 14 },
-  sectionTitle: { color: '#18332F', fontSize: 16, fontWeight: '600', marginTop: 8, marginBottom: 10 },
-  lines: { marginTop: 16, marginBottom: 4, borderTopWidth: 1, borderTopColor: '#DCE7E2' },
-  draftLine: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#DCE7E2' },
+  helper: { color: t.tint, fontSize: 14, fontWeight: '600', marginTop: -4, marginBottom: 14 },
+  sectionTitle: { color: t.text, fontSize: 16, fontWeight: '600', marginTop: 8, marginBottom: 10 },
+  lines: { marginTop: 16, marginBottom: 4, borderTopWidth: 1, borderTopColor: t.separator },
+  draftLine: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: t.separator },
   lineCopy: { flex: 1 },
-  lineName: { color: '#18332F', fontSize: 15, fontWeight: '600' },
-  lineDetail: { color: '#526864', fontSize: 14, marginTop: 4 },
+  lineName: { color: t.text, fontSize: 15, fontWeight: '600' },
+  lineDetail: { color: t.secondaryText, fontSize: 14, marginTop: 4 },
   removeButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  remove: { color: '#A43D32', fontSize: 14, fontWeight: '600' },
+  remove: { color: t.danger, fontSize: 14, fontWeight: '600' },
   optionalToggle: { minHeight: 48, justifyContent: 'center', marginTop: 8 },
-  optionalText: { color: '#11645D', fontSize: 14, fontWeight: '600' },
-  extraFields: { borderLeftWidth: 2, borderLeftColor: '#DCE7E2', paddingLeft: 12, marginBottom: 8 },
-  fieldLabel: { color: '#18332F', fontSize: 14, fontWeight: '600', marginBottom: 6 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#DCE7E2' },
-  totalLabel: { color: '#526864', fontSize: 14, fontWeight: '600' },
-  totalValue: { color: '#18332F', fontSize: 18, fontWeight: '700' },
+  optionalText: { color: t.tint, fontSize: 14, fontWeight: '600' },
+  extraFields: { borderLeftWidth: 2, borderLeftColor: t.separator, paddingLeft: 12, marginBottom: 8 },
+  fieldLabel: { color: t.text, fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12, paddingTop: 14, borderTopWidth: 1, borderTopColor: t.separator },
+  totalLabel: { color: t.secondaryText, fontSize: 14, fontWeight: '600' },
+  totalValue: { color: t.text, fontSize: 18, fontWeight: '700' },
 });

@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { api, fetchAll, type Produit, type Stock } from '@/lib/session-api';
 import { useAuth } from '@/lib/auth-context';
-import { Action, uiStyles as ui } from '@/components/resource-screen';
+import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { OptionSelect, toOptions } from '@/components/option-select';
 import { QuantityField } from '@/components/quantity-field';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 export default function NewStockMovementScreen() {
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
+  const ui = useUiStyles();
   const router = useRouter();
   const params = useLocalSearchParams<{ product?: string; returnTo?: string; client?: string }>();
   const { user } = useAuth();
@@ -69,7 +73,7 @@ export default function NewStockMovementScreen() {
 
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
     <AppPageHeading title="Mouvement de stock" subtitle="Choisissez un produit, puis enregistrez une entrée ou une perte." />
-    {loading ? <ActivityIndicator color="#11645D" style={styles.loader} /> : !products.length ? <View style={ui.card}>
+    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : !products.length ? <View style={ui.card}>
       <Text style={styles.formTitle}>Ajoutez d’abord un produit</Text>
       <Text style={styles.formHint}>Un mouvement de stock doit être associé à un produit du catalogue.</Text>
       <Action label="Ajouter un produit" onPress={() => router.push({ pathname: '/products', params: { add: '1' } })} />
@@ -87,10 +91,10 @@ export default function NewStockMovementScreen() {
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   loader: { marginVertical: 32 },
-  formTitle: { color: '#18332F', fontSize: 17, fontWeight: '600', marginBottom: 5 },
-  formHint: { color: '#526864', fontSize: 14, lineHeight: 20, marginBottom: 18 },
+  formTitle: { color: t.text, fontSize: 17, fontWeight: '600', marginBottom: 5 },
+  formHint: { color: t.secondaryText, fontSize: 14, lineHeight: 20, marginBottom: 18 },
   actions: { gap: 10, marginTop: 4 },
   actionSlot: { width: '100%' },
   error: { marginTop: 12 },

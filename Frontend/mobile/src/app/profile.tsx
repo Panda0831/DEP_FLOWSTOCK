@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth-context';
 import { changeMyPassword, updateMyProfile } from '@/lib/session-api';
-import { Action, uiStyles as ui } from '@/components/resource-screen';
+import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { FadeIn, MotionPressable } from '@/components/motion';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 function getInitials(name: string, email: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -15,6 +16,9 @@ function getInitials(name: string, email: string) {
 }
 
 export default function ProfileScreen() {
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
+  const ui = useUiStyles();
   const router = useRouter();
   const { user, updateUser, signOut } = useAuth();
   const [nomComplet, setNomComplet] = useState(user?.nom_complet ?? '');
@@ -109,7 +113,7 @@ export default function ProfileScreen() {
           value={nomComplet}
           onChangeText={(value) => { setNomComplet(value); setError(''); setNotice(''); }}
           placeholder="Ex. Marie Rakoto"
-          placeholderTextColor="#929B95"
+          placeholderTextColor={t.secondaryText}
           autoComplete="name"
           returnKeyType="done"
         />
@@ -127,11 +131,11 @@ export default function ProfileScreen() {
           </View>
         </View>
         <Text style={styles.fieldLabel}>Mot de passe actuel</Text>
-        <TextInput style={styles.input} value={ancien} onChangeText={setAncien} secureTextEntry placeholder="Saisissez votre mot de passe actuel" placeholderTextColor="#929B95" autoComplete="current-password" textContentType="password" />
+        <TextInput style={styles.input} value={ancien} onChangeText={setAncien} secureTextEntry placeholder="Saisissez votre mot de passe actuel" placeholderTextColor={t.secondaryText} autoComplete="current-password" textContentType="password" />
         <Text style={styles.fieldLabel}>Nouveau mot de passe</Text>
-        <TextInput style={styles.input} value={nouveau} onChangeText={setNouveau} secureTextEntry placeholder="Saisissez un nouveau mot de passe" placeholderTextColor="#929B95" autoComplete="new-password" textContentType="newPassword" />
+        <TextInput style={styles.input} value={nouveau} onChangeText={setNouveau} secureTextEntry placeholder="Saisissez un nouveau mot de passe" placeholderTextColor={t.secondaryText} autoComplete="new-password" textContentType="newPassword" />
         <Text style={styles.fieldLabel}>Confirmation</Text>
-        <TextInput style={styles.input} value={confirmation} onChangeText={setConfirmation} secureTextEntry placeholder="Confirmez le nouveau mot de passe" placeholderTextColor="#929B95" autoComplete="new-password" textContentType="newPassword" />
+        <TextInput style={styles.input} value={confirmation} onChangeText={setConfirmation} secureTextEntry placeholder="Confirmez le nouveau mot de passe" placeholderTextColor={t.secondaryText} autoComplete="new-password" textContentType="newPassword" />
         <Action label={busy ? 'Enregistrement…' : 'Enregistrer'} onPress={() => void savePassword()} disabled={busy || !ancien || !nouveau || nouveau !== confirmation} />
       </View>
     </FadeIn>
@@ -143,7 +147,7 @@ export default function ProfileScreen() {
           <Text style={styles.signOutDescription}>Terminez votre session sur cet appareil.</Text>
         </View>
         <MotionPressable onPress={() => setConfirmDisconnect(true)} disabled={busy} style={[styles.signOutButton, busy && styles.disabled]} accessibilityRole="button">
-          {busy ? <ActivityIndicator color="#A43D32" /> : <Text style={styles.signOutText}>Se déconnecter</Text>}
+          {busy ? <ActivityIndicator color={t.danger} /> : <Text style={styles.signOutText}>Se déconnecter</Text>}
         </MotionPressable>
       </View>
     </FadeIn>
@@ -168,54 +172,54 @@ export default function ProfileScreen() {
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({
-  identityCard: { backgroundColor: '#E5F2EF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#DCE7E2' },
+const makeStyles = (t: AppTheme) => StyleSheet.create({
+  identityCard: { backgroundColor: t.tintSurface, borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: t.separator },
   identityTop: { flexDirection: 'row', alignItems: 'center', gap: 13 },
-  avatar: { width: 58, height: 58, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#DCE7E2' },
-  avatarText: { color: '#11645D', fontSize: 18, fontWeight: '800', letterSpacing: 0.5 },
+  avatar: { width: 58, height: 58, borderRadius: 20, backgroundColor: t.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: t.separator },
+  avatarText: { color: t.tint, fontSize: 18, fontWeight: '800', letterSpacing: 0.5 },
   identityCopy: { flex: 1, minWidth: 0 },
-  identityName: { color: '#18332F', fontSize: 17, fontWeight: '800' },
-  identityEmail: { color: '#587162', fontSize: 12, marginTop: 4 },
-  roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FFFFFF', borderRadius: 20, paddingVertical: 7, paddingHorizontal: 9, borderWidth: 1, borderColor: '#DCE7E2' },
-  roleDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#11645D' },
-  roleText: { color: '#17633A', fontSize: 10, fontWeight: '700' },
-  identityDivider: { height: 1, backgroundColor: '#DCE7E2', marginTop: 18, marginBottom: 12 },
+  identityName: { color: t.text, fontSize: 17, fontWeight: '800' },
+  identityEmail: { color: t.secondaryText, fontSize: 12, marginTop: 4 },
+  roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: t.surface, borderRadius: 20, paddingVertical: 7, paddingHorizontal: 9, borderWidth: 1, borderColor: t.separator },
+  roleDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: t.tint },
+  roleText: { color: t.tint, fontSize: 10, fontWeight: '700' },
+  identityDivider: { height: 1, backgroundColor: t.separator, marginTop: 18, marginBottom: 12 },
   identityFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  identityFooterLabel: { color: '#668171', fontSize: 11 },
-  identityFooterValue: { color: '#11645D', fontSize: 11, fontWeight: '700' },
-  messageError: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 13, borderRadius: 13, backgroundColor: '#FFF0F0', borderWidth: 1, borderColor: '#F3D1D1', marginBottom: 12 },
-  messageSuccess: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 13, borderRadius: 13, backgroundColor: '#E5F2EF', borderWidth: 1, borderColor: '#CDEAD6', marginBottom: 12 },
-  messageErrorMark: { color: '#A43D32', fontSize: 15, fontWeight: '800' },
-  messageSuccessMark: { color: '#11645D', fontSize: 15, fontWeight: '800' },
-  messageText: { flex: 1, color: '#465149', fontSize: 12, fontWeight: '600' },
-  formCard: { backgroundColor: '#FFFFFF', borderRadius: 18, padding: 19, borderColor: '#E3E9E4', borderWidth: 1, marginBottom: 14 },
+  identityFooterLabel: { color: t.secondaryText, fontSize: 11 },
+  identityFooterValue: { color: t.tint, fontSize: 11, fontWeight: '700' },
+  messageError: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 13, borderRadius: 13, backgroundColor: t.dangerSurface, borderWidth: 1, borderColor: t.danger, marginBottom: 12 },
+  messageSuccess: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 13, borderRadius: 13, backgroundColor: t.tintSurface, borderWidth: 1, borderColor: t.separator, marginBottom: 12 },
+  messageErrorMark: { color: t.danger, fontSize: 15, fontWeight: '800' },
+  messageSuccessMark: { color: t.tint, fontSize: 15, fontWeight: '800' },
+  messageText: { flex: 1, color: t.text, fontSize: 12, fontWeight: '600' },
+  formCard: { backgroundColor: t.surface, borderRadius: 18, padding: 19, borderColor: t.separator, borderWidth: 1, marginBottom: 14 },
   cardHeading: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 18 },
   cardIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  profileIcon: { backgroundColor: '#E5F2EF' },
-  profileIconText: { color: '#11645D', fontSize: 18, fontWeight: '800' },
-  securityIcon: { backgroundColor: '#EEF1F6' },
-  securityIconText: { color: '#18332F', fontSize: 21, fontWeight: '700' },
+  profileIcon: { backgroundColor: t.tintSurface },
+  profileIconText: { color: t.tint, fontSize: 18, fontWeight: '800' },
+  securityIcon: { backgroundColor: t.background },
+  securityIconText: { color: t.text, fontSize: 21, fontWeight: '700' },
   cardHeadingCopy: { flex: 1 },
-  cardTitle: { color: '#18332F', fontSize: 15, fontWeight: '800' },
-  cardSubtitle: { color: '#526864', fontSize: 11, lineHeight: 16, marginTop: 3 },
-  fieldLabel: { color: '#4F5A52', fontSize: 11, fontWeight: '700', marginBottom: 6 },
-  input: { minHeight: 47, borderWidth: 1, borderColor: '#DCE7E2', borderRadius: 12, paddingHorizontal: 13, color: '#18332F', marginBottom: 13, backgroundColor: '#FBFCFB', fontSize: 13 },
-  signOutCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF', borderRadius: 17, padding: 17, borderWidth: 1, borderColor: '#F0DCDC', marginTop: 2 },
+  cardTitle: { color: t.text, fontSize: 15, fontWeight: '800' },
+  cardSubtitle: { color: t.secondaryText, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  fieldLabel: { color: t.text, fontSize: 11, fontWeight: '700', marginBottom: 6 },
+  input: { minHeight: 47, borderWidth: 1, borderColor: t.separator, borderRadius: 12, paddingHorizontal: 13, color: t.text, marginBottom: 13, backgroundColor: t.surface, fontSize: 13 },
+  signOutCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: t.surface, borderRadius: 17, padding: 17, borderWidth: 1, borderColor: t.separator, marginTop: 2 },
   signOutCopy: { flex: 1 },
-  signOutTitle: { color: '#18332F', fontSize: 14, fontWeight: '800' },
-  signOutDescription: { color: '#526864', fontSize: 11, marginTop: 4, lineHeight: 15 },
-  signOutButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 11, backgroundColor: '#FFF0F0', borderWidth: 1, borderColor: '#F3D1D1' },
-  signOutText: { color: '#A43D32', fontSize: 11, fontWeight: '800' },
+  signOutTitle: { color: t.text, fontSize: 14, fontWeight: '800' },
+  signOutDescription: { color: t.secondaryText, fontSize: 11, marginTop: 4, lineHeight: 15 },
+  signOutButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 11, backgroundColor: t.dangerSurface, borderWidth: 1, borderColor: t.danger },
+  signOutText: { color: t.danger, fontSize: 11, fontWeight: '800' },
   disabled: { opacity: 0.55 },
-  modalBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: 'rgba(23,61,43,0.34)' },
-  confirmCard: { width: '100%', maxWidth: 380, alignItems: 'center', padding: 24, borderRadius: 22, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE7E2', shadowColor: '#38704A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 6 },
-  confirmIcon: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: '#FFF0F0' },
-  confirmIconText: { color: '#A43D32', fontSize: 23, fontWeight: '800' },
-  confirmTitle: { color: '#18332F', fontSize: 18, fontWeight: '800', marginTop: 14 },
-  confirmDescription: { color: '#65736A', fontSize: 13, textAlign: 'center', lineHeight: 19, marginTop: 7 },
+  modalBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.55)' },
+  confirmCard: { width: '100%', maxWidth: 380, alignItems: 'center', padding: 24, borderRadius: 22, backgroundColor: t.surface, borderWidth: 1, borderColor: t.separator, shadowColor: '#38704A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 6 },
+  confirmIcon: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: t.dangerSurface },
+  confirmIconText: { color: t.danger, fontSize: 23, fontWeight: '800' },
+  confirmTitle: { color: t.text, fontSize: 18, fontWeight: '800', marginTop: 14 },
+  confirmDescription: { color: t.secondaryText, fontSize: 13, textAlign: 'center', lineHeight: 19, marginTop: 7 },
   confirmActions: { flexDirection: 'row', alignSelf: 'stretch', gap: 10, marginTop: 22 },
-  keepButton: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#E5F2EF', borderWidth: 1, borderColor: '#DCE7E2' },
-  keepButtonText: { color: '#17633A', fontSize: 12, fontWeight: '800' },
-  confirmLogoutButton: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#A43D32' },
-  confirmLogoutText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+  keepButton: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: t.tintSurface, borderWidth: 1, borderColor: t.separator },
+  keepButtonText: { color: t.tint, fontSize: 12, fontWeight: '800' },
+  confirmLogoutButton: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: t.danger },
+  confirmLogoutText: { color: t.onTint, fontSize: 12, fontWeight: '800' },
 });

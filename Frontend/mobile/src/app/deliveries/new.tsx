@@ -3,13 +3,17 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { api, fetchAll, type Client, type Commande, type Delivery, type Produit } from '@/lib/session-api';
-import { Action, uiStyles as ui } from '@/components/resource-screen';
+import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { MotionPressable } from '@/components/motion';
 import { OptionSelect, toOptions } from '@/components/option-select';
 import { orderDisplayName } from '@/lib/order-display';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 export default function NewDeliveryScreen() {
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
+  const ui = useUiStyles();
   const router = useRouter();
   const params = useLocalSearchParams<{ order?: string }>();
   const [orders, setOrders] = useState<Commande[]>([]);
@@ -74,7 +78,7 @@ export default function NewDeliveryScreen() {
 
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
     <AppPageHeading title="Nouvelle livraison" subtitle="Choisissez une commande confirmée, vérifiez le client puis créez le suivi." />
-    {loading ? <ActivityIndicator color="#11645D" style={styles.loader} /> : <View style={ui.card}>
+    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : <View style={ui.card}>
       {availableOrders.length
         ? <OptionSelect
             label="Commande à livrer"
@@ -95,15 +99,15 @@ export default function NewDeliveryScreen() {
         <Text style={styles.clientDetail}>Adresse : {address.trim() || client.adresse || '—'}</Text>
       </View>}
       <Text style={styles.fieldLabel}>Adresse de livraison</Text>
-      <TextInput style={ui.input} value={address} onChangeText={setAddress} placeholder="Adresse du client" placeholderTextColor="#526864" accessibilityLabel="Adresse de livraison" />
+      <TextInput style={ui.input} value={address} onChangeText={setAddress} placeholder="Adresse du client" placeholderTextColor={t.secondaryText} accessibilityLabel="Adresse de livraison" />
       <MotionPressable onPress={() => setFeesOpen((open) => !open)} style={styles.feesToggle} accessibilityRole="button" accessibilityState={{ expanded: feesOpen }}>
         <Text style={styles.feesToggleText}>{feesOpen ? 'Masquer les frais' : 'Renseigner les frais (facultatif)'}</Text>
       </MotionPressable>
       {feesOpen && <View style={styles.feeFields}>
         <Text style={styles.fieldLabel}>Coût réel (Ar)</Text>
-        <TextInput style={ui.input} value={cost} onChangeText={setCost} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#526864" accessibilityLabel="Coût réel de la livraison en ariary" />
+        <TextInput style={ui.input} value={cost} onChangeText={setCost} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={t.secondaryText} accessibilityLabel="Coût réel de la livraison en ariary" />
         <Text style={styles.fieldLabel}>Frais facturés au client (Ar)</Text>
-        <TextInput style={ui.input} value={charged} onChangeText={setCharged} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#526864" accessibilityLabel="Frais facturés au client en ariary" />
+        <TextInput style={ui.input} value={charged} onChangeText={setCharged} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={t.secondaryText} accessibilityLabel="Frais facturés au client en ariary" />
       </View>}
       {!!error && <Text accessibilityRole="alert" style={ui.error}>{error}</Text>}
       <Action label={busy ? 'Création…' : 'Créer le suivi de livraison'} onPress={() => void create()} disabled={busy || !selected} />
@@ -111,14 +115,14 @@ export default function NewDeliveryScreen() {
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   loader: { marginVertical: 32 },
-  helper: { color: '#526864', fontSize: 14, lineHeight: 20, marginBottom: 14 },
-  clientBox: { backgroundColor: '#E5F2EF', borderRadius: 12, padding: 14, marginBottom: 14 },
-  clientName: { color: '#18332F', fontSize: 15, fontWeight: '600' },
-  clientDetail: { color: '#526864', fontSize: 14, marginTop: 5 },
-  fieldLabel: { color: '#18332F', fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  helper: { color: t.secondaryText, fontSize: 14, lineHeight: 20, marginBottom: 14 },
+  clientBox: { backgroundColor: t.tintSurface, borderRadius: 12, padding: 14, marginBottom: 14 },
+  clientName: { color: t.text, fontSize: 15, fontWeight: '600' },
+  clientDetail: { color: t.secondaryText, fontSize: 14, marginTop: 5 },
+  fieldLabel: { color: t.text, fontSize: 14, fontWeight: '600', marginBottom: 6 },
   feesToggle: { minHeight: 48, justifyContent: 'center', marginTop: 2, marginBottom: 8 },
-  feesToggleText: { color: '#11645D', fontSize: 14, fontWeight: '600' },
-  feeFields: { borderLeftWidth: 2, borderLeftColor: '#DCE7E2', paddingLeft: 12, marginBottom: 8 },
+  feesToggleText: { color: t.tint, fontSize: 14, fontWeight: '600' },
+  feeFields: { borderLeftWidth: 2, borderLeftColor: t.separator, paddingLeft: 12, marginBottom: 8 },
 });

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Action, uiStyles as ui } from '@/components/resource-screen';
+import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { FadeIn, MotionPressable } from '@/components/motion';
 import { FormDisclosure, useAutoOpenForm } from '@/components/form-disclosure';
@@ -10,6 +10,7 @@ import { QuantityField } from '@/components/quantity-field';
 import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
 import { useAuth } from '@/lib/auth-context';
 import { api, fetchAll, type Produit, type Fournisseur, type Purchase } from '@/lib/session-api';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 type DraftLine = { product: string; quantity: string; unit_price: string };
 const PAYMENT_MODES = [
@@ -22,6 +23,9 @@ const OBTENTION_OPTIONS = [
 ];
 
 export default function PurchasesScreen() {
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
+  const ui = useUiStyles();
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string; focus?: string; step?: string; supplier?: string; product?: string; detail?: string }>();
   const { user } = useAuth();
@@ -217,7 +221,7 @@ export default function PurchasesScreen() {
       />
       <QuantityField value={quantity} onChange={setQuantity} />
       <Text style={styles.fieldLabel}>Prix d’achat unitaire (Ar)</Text>
-      <TextInput style={ui.input} value={unitPrice} onChangeText={setUnitPrice} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#526864" accessibilityLabel="Prix d’achat unitaire en ariary" />
+      <TextInput style={ui.input} value={unitPrice} onChangeText={setUnitPrice} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={t.secondaryText} accessibilityLabel="Prix d’achat unitaire en ariary" />
       <Action label="Ajouter cet article" variant="secondary" onPress={addLine} disabled={!selectedProduct || !(Number(quantity) >= 1) || !(Number(unitPrice) >= 0) || !unitPrice} />
       {lines.map((line) => <View style={styles.draftLine} key={line.product}><Text style={styles.lineName}>{products.find((p) => p.public_id === line.product)?.nomProduit}</Text><Text style={styles.lineDetail}>{line.quantity} × {line.unit_price} Ar</Text><MotionPressable onPress={() => setLines((current) => current.filter((item) => item.product !== line.product))}><Text style={styles.remove}>Retirer</Text></MotionPressable></View>)}
       <View style={styles.modeRow}><Text style={styles.totalLabel}>Total prévu</Text><Text style={styles.totalValue}>{lines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.unit_price), 0).toLocaleString('fr-FR')} Ar</Text></View>
@@ -227,7 +231,7 @@ export default function PurchasesScreen() {
       {detailsOpen && <View style={styles.detailsBox}>
         <OptionSelect label="Mode d’obtention" options={OBTENTION_OPTIONS} value={obtention} onChange={(value) => setObtention(value as 'commande' | 'achat_direct')} />
         <Text style={styles.fieldLabel}>Lieu d’achat</Text>
-        <TextInput style={ui.input} value={location} onChangeText={setLocation} placeholder="Ex. Marché central" placeholderTextColor="#526864" accessibilityLabel="Lieu d’achat, facultatif" />
+        <TextInput style={ui.input} value={location} onChangeText={setLocation} placeholder="Ex. Marché central" placeholderTextColor={t.secondaryText} accessibilityLabel="Lieu d’achat, facultatif" />
       </View>}
       <Action label={busy ? 'Enregistrement…' : 'Enregistrer'} onPress={() => void savePurchase()} disabled={busy || !supplier || !lines.length} />
         {editingPurchase && <MotionPressable onPress={() => { setEditingPurchase(null); setSupplier(''); setLines([]); setLocation(''); setDetailsOpen(false); }} style={styles.cancel}><Text style={styles.cancelText}>Annuler la modification</Text></MotionPressable>}
@@ -245,7 +249,7 @@ export default function PurchasesScreen() {
           : `Réception terminée. Solde restant : ${Number(focusedPurchase.solde_restant).toLocaleString('fr-FR')} Ar.`}</Text>
     </View>}
     <View style={styles.sectionHeading}><Text style={ui.section}>{detailMode ? 'Gérer l’achat' : 'Historique des achats'}</Text><MotionPressable onPress={() => void load()}><Text style={ui.refresh}>Actualiser</Text></MotionPressable></View>
-    {loading ? <ActivityIndicator color="#11645D" style={{ marginVertical: 24 }} /> : purchases.length === 0 ? <Text style={ui.empty}>Aucun achat enregistré.</Text> : visiblePurchases.map((purchase, index) => <FadeIn key={purchase.public_id} delay={Math.min(index * 35, 280)}>
+    {loading ? <ActivityIndicator color={t.tint} style={{ marginVertical: 24 }} /> : purchases.length === 0 ? <Text style={ui.empty}>Aucun achat enregistré.</Text> : visiblePurchases.map((purchase, index) => <FadeIn key={purchase.public_id} delay={Math.min(index * 35, 280)}>
       <View style={[styles.purchase, purchase.public_id === focusedId && styles.purchaseFocused]}>
         <View style={styles.purchaseHeader}><View style={{ flex: 1 }}>{detailMode
           ? <Text style={styles.purchaseTitle}>{purchase.reference}</Text>
@@ -267,7 +271,7 @@ export default function PurchasesScreen() {
                   }))}
                   keyboardType="number-pad"
                   placeholder={`Max. ${restant}`}
-                  placeholderTextColor="#526864"
+                  placeholderTextColor={t.secondaryText}
                   accessibilityLabel={`Quantité à recevoir pour ${line.nomProduit}, maximum ${restant}`}
                 />
               </View>}
@@ -282,7 +286,7 @@ export default function PurchasesScreen() {
                   }))}
                   keyboardType="number-pad"
                   placeholder={`Max. ${line.quantite_recue - line.quantite_retournee}`}
-                  placeholderTextColor="#526864"
+                  placeholderTextColor={t.secondaryText}
                   accessibilityLabel={`Quantité à retourner pour ${line.nomProduit}, maximum ${line.quantite_recue - line.quantite_retournee}`}
                 />
               </View>}
@@ -297,7 +301,7 @@ export default function PurchasesScreen() {
         {purchase.statut === 'en_attente' && purchase.montant_paye === '0.00' && <MotionPressable onPress={() => editPurchase(purchase)} disabled={busy} style={styles.cancel}><Text style={styles.editText}>Modifier</Text></MotionPressable>}
         {purchase.statut !== 'recu' && purchase.statut !== 'annule' && <View style={styles.actions}><Action label={busy ? '…' : 'Réceptionner'} onPress={() => void receive(purchase)} disabled={busy || !purchase.lignes.some((line) => Number(receiveQuantities[purchase.public_id]?.[line.product]) > 0)} /></View>}
         {purchase.lignes.some((line) => line.quantite_recue > line.quantite_retournee) && purchase.statut !== 'annule' && <View style={styles.actions}><Action label={busy ? '…' : 'Retourner'} onPress={() => void returnToSupplier(purchase)} disabled={busy || !purchase.lignes.some((line) => Number(returnQuantities[purchase.public_id]?.[line.product]) > 0)} /></View>}
-        {Number(purchase.solde_restant) > 0 && purchase.statut !== 'annule' && <View style={styles.paymentBox}><OptionSelect label="Mode de paiement" options={PAYMENT_MODES} value={paymentMode} onChange={setPaymentMode} pageSize={PAYMENT_MODES.length} /><Text style={styles.inputLabel}>Montant versé (Ar)</Text><View style={styles.paymentRow}><TextInput style={[ui.input, styles.paymentInput]} value={paymentAmounts[purchase.public_id] || ''} onChangeText={(value) => setPaymentAmounts((current) => ({ ...current, [purchase.public_id]: value }))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#526864" accessibilityLabel={`Montant à payer pour l’achat ${purchase.reference}, solde ${purchase.solde_restant} ariary`} /><Action label="Enregistrer le paiement" onPress={() => void pay(purchase)} disabled={busy || !(Number(paymentAmounts[purchase.public_id]) > 0)} /></View></View>}
+        {Number(purchase.solde_restant) > 0 && purchase.statut !== 'annule' && <View style={styles.paymentBox}><OptionSelect label="Mode de paiement" options={PAYMENT_MODES} value={paymentMode} onChange={setPaymentMode} pageSize={PAYMENT_MODES.length} /><Text style={styles.inputLabel}>Montant versé (Ar)</Text><View style={styles.paymentRow}><TextInput style={[ui.input, styles.paymentInput]} value={paymentAmounts[purchase.public_id] || ''} onChangeText={(value) => setPaymentAmounts((current) => ({ ...current, [purchase.public_id]: value }))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={t.secondaryText} accessibilityLabel={`Montant à payer pour l’achat ${purchase.reference}, solde ${purchase.solde_restant} ariary`} /><Action label="Enregistrer le paiement" onPress={() => void pay(purchase)} disabled={busy || !(Number(paymentAmounts[purchase.public_id]) > 0)} /></View></View>}
         {purchase.statut === 'en_attente' && purchase.montant_paye === '0.00' && <MotionPressable onPress={() => void cancel(purchase)} disabled={busy} style={styles.cancel}><Text style={styles.cancelText}>Annuler</Text></MotionPressable>}
       </View>
     </FadeIn>)}
@@ -305,46 +309,46 @@ export default function PurchasesScreen() {
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   backLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingRight: 12 },
-  backText: { color: '#11645D', fontSize: 14, fontWeight: '600' },
+  backText: { color: t.tint, fontSize: 14, fontWeight: '600' },
   purchaseActions: { alignItems: 'flex-end', gap: 4 },
-  manageLink: { color: '#11645D', fontSize: 13, fontWeight: '700', minHeight: 36, textAlignVertical: 'center' },
-  fieldLabel: { color: '#18332F', fontSize: 14, fontWeight: '600', marginBottom: 6 },
-  helper: { color: '#11645D', fontSize: 14, fontWeight: '600', marginBottom: 12 },
-  workflow: { padding: 15, marginBottom: 18, borderRadius: 16, borderWidth: 1, borderColor: '#B9DCD4', backgroundColor: '#E5F2EF' },
-  workflowEyebrow: { color: '#11645D', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
-  workflowTitle: { color: '#18332F', fontSize: 17, fontWeight: '700', marginTop: 5 },
-  workflowText: { color: '#526864', fontSize: 14, lineHeight: 20, marginTop: 5 },
+  manageLink: { color: t.tint, fontSize: 13, fontWeight: '700', minHeight: 36, textAlignVertical: 'center' },
+  fieldLabel: { color: t.text, fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  helper: { color: t.tint, fontSize: 14, fontWeight: '600', marginBottom: 12 },
+  workflow: { padding: 15, marginBottom: 18, borderRadius: 16, borderWidth: 1, borderColor: t.separator, backgroundColor: t.tintSurface },
+  workflowEyebrow: { color: t.tint, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  workflowTitle: { color: t.text, fontSize: 17, fontWeight: '700', marginTop: 5 },
+  workflowText: { color: t.secondaryText, fontSize: 14, lineHeight: 20, marginTop: 5 },
   detailsToggle: { minHeight: 48, justifyContent: 'center' },
-  detailsToggleText: { color: '#11645D', fontSize: 14, fontWeight: '600' },
-  detailsBox: { borderLeftWidth: 2, borderLeftColor: '#DCE7E2', paddingLeft: 12, marginBottom: 8 },
-  draftLine: { flexDirection: 'row', alignItems: 'center', gap: 10, borderTopWidth: 1, borderTopColor: '#EEF2EE', paddingVertical: 10 },
-  lineName: { color: '#18332F', fontSize: 13, fontWeight: '700' },
-  lineDetail: { color: '#526864', fontSize: 11, marginTop: 3 },
-  remove: { color: '#A43D32', fontSize: 11, fontWeight: '700' },
+  detailsToggleText: { color: t.tint, fontSize: 14, fontWeight: '600' },
+  detailsBox: { borderLeftWidth: 2, borderLeftColor: t.separator, paddingLeft: 12, marginBottom: 8 },
+  draftLine: { flexDirection: 'row', alignItems: 'center', gap: 10, borderTopWidth: 1, borderTopColor: t.separator, paddingVertical: 10 },
+  lineName: { color: t.text, fontSize: 13, fontWeight: '700' },
+  lineDetail: { color: t.secondaryText, fontSize: 11, marginTop: 3 },
+  remove: { color: t.danger, fontSize: 11, fontWeight: '700' },
   modeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
-  totalLabel: { color: '#526864', fontSize: 11, fontWeight: '600' },
-  totalValue: { color: '#18332F', fontSize: 13, fontWeight: '800' },
+  totalLabel: { color: t.secondaryText, fontSize: 11, fontWeight: '600' },
+  totalValue: { color: t.text, fontSize: 13, fontWeight: '800' },
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  purchase: { backgroundColor: '#FFFFFF', padding: 16, borderColor: '#DCE7E2', borderWidth: 1, borderRadius: 16, marginBottom: 11 },
-  purchaseFocused: { borderColor: '#11645D', borderWidth: 2 },
+  purchase: { backgroundColor: t.surface, padding: 16, borderColor: t.separator, borderWidth: 1, borderRadius: 16, marginBottom: 11 },
+  purchaseFocused: { borderColor: t.tint, borderWidth: 2 },
   purchaseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10 },
-  purchaseTitle: { color: '#18332F', fontWeight: '800', fontSize: 14 },
-  purchaseSub: { color: '#526864', fontSize: 11, marginTop: 4 },
-  badge: { color: '#11645D', backgroundColor: '#E5F2EF', overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10, fontSize: 12, fontWeight: '800', textTransform: 'capitalize' },
-  purchaseLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, borderTopWidth: 1, borderTopColor: '#EEF2EE', paddingVertical: 10 },
+  purchaseTitle: { color: t.text, fontWeight: '800', fontSize: 14 },
+  purchaseSub: { color: t.secondaryText, fontSize: 11, marginTop: 4 },
+  badge: { color: t.tint, backgroundColor: t.tintSurface, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10, fontSize: 12, fontWeight: '800', textTransform: 'capitalize' },
+  purchaseLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, borderTopWidth: 1, borderTopColor: t.separator, paddingVertical: 10 },
   quantityActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   quantityAction: { flex: 1, minWidth: 115 },
-  inputLabel: { color: '#526864', fontSize: 13, fontWeight: '600', marginBottom: 4 },
-  receiveInput: { minHeight: 44, borderWidth: 1, borderColor: '#D9E0DA', borderRadius: 10, paddingHorizontal: 10, color: '#18332F', fontSize: 15 },
-  totals: { gap: 5, borderTopWidth: 1, borderTopColor: '#EEF2EE', paddingTop: 10 },
-  history: { color: '#526864', fontSize: 12, marginTop: 7 },
+  inputLabel: { color: t.secondaryText, fontSize: 13, fontWeight: '600', marginBottom: 4 },
+  receiveInput: { minHeight: 44, borderWidth: 1, borderColor: t.separator, borderRadius: 10, paddingHorizontal: 10, color: t.text, backgroundColor: t.surface, fontSize: 15 },
+  totals: { gap: 5, borderTopWidth: 1, borderTopColor: t.separator, paddingTop: 10 },
+  history: { color: t.secondaryText, fontSize: 12, marginTop: 7 },
   actions: { marginTop: 12 },
   paymentRow: { gap: 8, marginTop: 5 },
-  paymentBox: { borderTopWidth: 1, borderTopColor: '#EEF2EE', paddingTop: 7, marginTop: 10 },
+  paymentBox: { borderTopWidth: 1, borderTopColor: t.separator, paddingTop: 7, marginTop: 10 },
   paymentInput: { width: '100%', marginBottom: 0 },
   cancel: { alignSelf: 'flex-start', marginTop: 12 },
-  cancelText: { color: '#A43D32', fontSize: 11, fontWeight: '700' },
-  editText: { color: '#11645D', fontSize: 11, fontWeight: '700' },
+  cancelText: { color: t.danger, fontSize: 11, fontWeight: '700' },
+  editText: { color: t.tint, fontSize: 11, fontWeight: '700' },
 });

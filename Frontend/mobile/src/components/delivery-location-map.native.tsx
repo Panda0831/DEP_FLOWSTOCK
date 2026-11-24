@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppleMaps, GoogleMaps } from 'expo-maps';
 import * as Location from 'expo-location';
+import type { AppTheme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/use-app-theme';
 import type { DeliveryMapPoint } from './delivery-location-map.types';
 
 export type { DeliveryMapPoint } from './delivery-location-map.types';
@@ -24,6 +26,8 @@ function coordinatesFromMap(value: { latitude?: number; longitude?: number }): C
 }
 
 export function DeliveryLocationMap({ points }: { points: DeliveryMapPoint[] }) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [mapType, setMapType] = useState<'satellite' | 'plan'>('satellite');
   const [selected, setSelected] = useState<SelectedLocation | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
@@ -110,7 +114,7 @@ export function DeliveryLocationMap({ points }: { points: DeliveryMapPoint[] }) 
       <View style={styles.locationPin}><Text style={styles.locationPinText}>⌖</Text></View>
       <View style={styles.locationCopy}>
         <Text style={styles.locationTitle}>{selected.title}</Text>
-        {lookingUp ? <View style={styles.lookupRow}><ActivityIndicator size="small" color="#11645D" /><Text style={styles.locationAddress}>Recherche de l’adresse…</Text></View> :
+        {lookingUp ? <View style={styles.lookupRow}><ActivityIndicator size="small" color={theme.tint} /><Text style={styles.locationAddress}>Recherche de l’adresse…</Text></View> :
           <Text style={styles.locationAddress}>{selected.address || `${selected.coordinates.latitude.toFixed(5)}, ${selected.coordinates.longitude.toFixed(5)}`}</Text>}
         {!!selected.detail && !lookingUp && <Text style={styles.locationMeta}>{selected.detail}</Text>}
       </View>
@@ -126,6 +130,8 @@ function PlatformView({ mapType, initialCenter, markers, annotations, reverseGeo
   reverseGeocode: (coordinates: Coordinates, title?: string) => void;
   selectPoint: (id?: string) => void;
 }) {
+  const theme = useAppTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   if (Platform.OS === 'ios') {
     return <AppleMaps.View
       style={styles.map}
@@ -157,25 +163,25 @@ function PlatformView({ mapType, initialCenter, markers, annotations, reverseGeo
   />;
 }
 
-const styles = StyleSheet.create({
-  card: { backgroundColor: '#FFFFFF', borderRadius: 18, padding: 15, borderWidth: 1, borderColor: '#DCE7E2', marginBottom: 18, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 7, elevation: 1 },
+const makeStyles = (t: AppTheme) => StyleSheet.create({
+  card: { backgroundColor: t.surface, borderRadius: 18, padding: 15, borderWidth: 1, borderColor: t.separator, marginBottom: 18, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 7, elevation: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 },
   headingCopy: { flex: 1 },
-  title: { color: '#18332F', fontSize: 14, fontWeight: '800' },
-  caption: { color: '#526864', fontSize: 10, marginTop: 3 },
-  mapModes: { flexDirection: 'row', padding: 3, borderRadius: 11, backgroundColor: '#F0F4F1' },
+  title: { color: t.text, fontSize: 14, fontWeight: '800' },
+  caption: { color: t.secondaryText, fontSize: 10, marginTop: 3 },
+  mapModes: { flexDirection: 'row', padding: 3, borderRadius: 11, backgroundColor: t.background },
   modeButton: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8 },
-  modeActive: { backgroundColor: '#11645D' },
-  modeText: { color: '#65736A', fontSize: 10, fontWeight: '700' },
-  modeTextActive: { color: '#FFFFFF' },
-  map: { height: 240, width: '100%', overflow: 'hidden', borderRadius: 14, backgroundColor: '#E5F2EF' },
-  locationDetails: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, padding: 11, borderRadius: 13, backgroundColor: '#E5F2EF', borderWidth: 1, borderColor: '#DCE7E2' },
-  locationPin: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 11, backgroundColor: '#E1F2E6' },
-  locationPinText: { color: '#11645D', fontSize: 20, fontWeight: '800' },
+  modeActive: { backgroundColor: t.tint },
+  modeText: { color: t.secondaryText, fontSize: 10, fontWeight: '700' },
+  modeTextActive: { color: t.onTint },
+  map: { height: 240, width: '100%', overflow: 'hidden', borderRadius: 14, backgroundColor: t.tintSurface },
+  locationDetails: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, padding: 11, borderRadius: 13, backgroundColor: t.tintSurface, borderWidth: 1, borderColor: t.separator },
+  locationPin: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 11, backgroundColor: t.tintSurface },
+  locationPinText: { color: t.tint, fontSize: 20, fontWeight: '800' },
   locationCopy: { flex: 1 },
   lookupRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 },
-  locationTitle: { color: '#18332F', fontSize: 11, fontWeight: '800' },
-  locationAddress: { color: '#526259', fontSize: 11, marginTop: 4 },
-  locationMeta: { color: '#526864', fontSize: 10, marginTop: 3 },
-  hint: { color: '#526864', fontSize: 11, lineHeight: 16, marginTop: 10 },
+  locationTitle: { color: t.text, fontSize: 11, fontWeight: '800' },
+  locationAddress: { color: t.secondaryText, fontSize: 11, marginTop: 4 },
+  locationMeta: { color: t.secondaryText, fontSize: 10, marginTop: 3 },
+  hint: { color: t.secondaryText, fontSize: 11, lineHeight: 16, marginTop: 10 },
 });

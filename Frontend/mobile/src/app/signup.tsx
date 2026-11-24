@@ -1,13 +1,17 @@
+import { useMemo } from 'react';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { BrandLockup } from '@/components/brand-lockup';
 import { BrandDivider, FadeIn, MotionPressable } from '@/components/motion';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 export default function SignupScreen() {
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
   const router = useRouter();
   return <SafeAreaView style={styles.safe}>
-    <StatusBar style="dark" />
+    <StatusBar style="auto" />
     <FadeIn style={styles.card}>
       <BrandLockup variant="hero" />
       <BrandDivider style={styles.divider} />
@@ -23,14 +27,14 @@ export default function SignupScreen() {
   </SafeAreaView>;
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F8F5', justifyContent: 'center', padding: 22 },
-  card: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: '#FFFFFF', borderRadius: 24, padding: 28, borderWidth: 1, borderColor: '#DCE7E2', shadowColor: '#38704A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 20, elevation: 3 },
+const makeStyles = (t: AppTheme) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: t.background, justifyContent: 'center', padding: 22 },
+  card: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: t.surface, borderRadius: 24, padding: 28, borderWidth: 1, borderColor: t.separator, shadowColor: '#38704A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 20, elevation: 3 },
   copyBlock: { marginTop: 12 },
   divider: { marginTop: 20 },
-  eyebrow: { color: '#11645D', fontSize: 10, fontWeight: '800', letterSpacing: 1.2, textAlign: 'center' },
-  title: { color: '#18332F', fontSize: 27, fontWeight: '800', marginTop: 9, textAlign: 'center' },
-  copy: { color: '#65736A', fontSize: 14, lineHeight: 22, marginTop: 11, textAlign: 'center' },
-  button: { minHeight: 52, borderRadius: 14, backgroundColor: '#11645D', justifyContent: 'center', alignItems: 'center', marginTop: 24 },
-  buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  eyebrow: { color: t.tint, fontSize: 10, fontWeight: '800', letterSpacing: 1.2, textAlign: 'center' },
+  title: { color: t.text, fontSize: 27, fontWeight: '800', marginTop: 9, textAlign: 'center' },
+  copy: { color: t.secondaryText, fontSize: 14, lineHeight: 22, marginTop: 11, textAlign: 'center' },
+  button: { minHeight: 52, borderRadius: 14, backgroundColor: t.tint, justifyContent: 'center', alignItems: 'center', marginTop: 24 },
+  buttonText: { color: t.onTint, fontSize: 14, fontWeight: '700' },
 });
