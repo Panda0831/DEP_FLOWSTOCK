@@ -14,7 +14,7 @@ export function BrandLockup({ variant = 'compact', tagline = false }: { variant?
       </View>
       <View style={hero ? styles.heroCopy : styles.compactCopy}>
         <Text style={[hero ? styles.heroName : styles.compactName, { color: t.text }]}>FlowStock</Text>
-        {tagline && <Text style={[styles.tagline, { color: t.secondaryText }]}>Gérez votre activité en toute simplicité</Text>}
+        {!!tagline && <Text style={[styles.tagline, { color: t.secondaryText }]}>Gérez votre activité en toute simplicité</Text>}
       </View>
     </View>
   );

@@ -101,7 +101,7 @@ export default function StockScreen() {
   const visibleMoves = filteredMoves.slice((currentMovePage - 1) * MOVEMENTS_PER_PAGE, currentMovePage * MOVEMENTS_PER_PAGE);
   return <ScrollView style={[ui.page, { backgroundColor: t.background }]} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
     <AppPageHeading title="Stock" subtitle="Niveaux disponibles, alertes et journal des mouvements" />
-    {params.success && <View style={[styles.notice, params.success === 'loss' && styles.lossNotice]} accessibilityRole="summary">
+    {!!params.success && <View style={[styles.notice, params.success === 'loss' && styles.lossNotice]} accessibilityRole="summary">
       <Text style={styles.noticeText}>{params.success === 'loss' ? 'Perte enregistrée.' : 'Entrée de stock enregistrée.'}{focusedProduct ? ` ${focusedProduct.nomProduit} : ${focusedProduct.stock} unité(s) disponible(s).` : ''}</Text>
     </View>}
 

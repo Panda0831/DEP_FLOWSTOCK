@@ -223,7 +223,7 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
   return (
     <ScrollView style={styles.page} contentContainerStyle={uiStyles.content} keyboardShouldPersistTaps="handled">
       <AppPageHeading title={title} subtitle={subtitle} />
-      {focusId && <MotionPressable onPress={() => router.back()} style={{ minHeight: HitSize, justifyContent: 'center', alignSelf: 'flex-start' }} accessibilityRole="button"><Text style={styles.actionText}>‹ Retour</Text></MotionPressable>}
+      {!!focusId && <MotionPressable onPress={() => router.back()} style={{ minHeight: HitSize, justifyContent: 'center', alignSelf: 'flex-start' }} accessibilityRole="button"><Text style={styles.actionText}>‹ Retour</Text></MotionPressable>}
       {summary}
       {canEdit && (
         <View style={styles.headingRow}>
@@ -235,7 +235,7 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
       )}
       {!canEdit && <View style={styles.listHeader}><Text style={styles.section}>{listTitle}</Text></View>}
       {searchable && <TextInput value={query} onChangeText={(value) => { setQuery(value); setPage(1); }} placeholder={`Rechercher ${title.toLocaleLowerCase('fr-FR')}`} placeholderTextColor={t.secondaryText} style={styles.search} accessibilityLabel={`Rechercher ${title.toLocaleLowerCase('fr-FR')}`} returnKeyType="search" />}
-      {error && !formOpen && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+      {!!error && !formOpen && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
       {loading ? <ActivityIndicator color={t.tint} style={styles.loader} />
         : orderedItems.length === 0 ? <Text style={styles.empty}>{items.length ? 'Aucun résultat pour cette recherche.' : emptyText}</Text>
         : orderedItems.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE).map((item) => {
