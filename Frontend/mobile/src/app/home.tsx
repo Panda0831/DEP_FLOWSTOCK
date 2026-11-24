@@ -130,7 +130,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
       <StatusBar />
-      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refreshDashboard()} tintColor={t.tint} />}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refreshDashboard()} tintColor={t.tint} />}>
         <View style={styles.headingRow}>
           <View style={styles.heading}>
             <AppPageHeading title="Vue d’ensemble" />
