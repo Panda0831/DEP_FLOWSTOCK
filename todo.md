@@ -15,7 +15,7 @@
 
 ## À faire ensuite
 
-- [ ] Ajouter une recherche et des filtres simples dans les listes des livraisons et des achats (client/fournisseur, article, statut).
+- [x] Ajouter une recherche et des filtres simples dans les listes des livraisons et des achats (client/fournisseur, article, statut).
 - [ ] Remplacer la saisie manuelle des dates des rapports par des périodes prédéfinies (« Ce mois », « Mois dernier ») et un choix de dates personnalisé.
 - [ ] Permettre de lancer un réapprovisionnement directement depuis une alerte de stock, avec le produit déjà sélectionné.
 - [ ] Améliorer la lisibilité mobile : augmenter les textes secondaires trop petits et vérifier le contraste et l’affichage avec une grande taille de texte.

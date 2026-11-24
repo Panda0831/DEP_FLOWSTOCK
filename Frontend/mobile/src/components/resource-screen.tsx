@@ -9,10 +9,12 @@ import { MotionPressable } from '@/components/motion';
 import { AppPageHeading } from '@/components/page-heading';
 import { OptionSelect } from '@/components/option-select';
 import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
-import { useAutoOpenForm } from '@/components/form-disclosure';
+import { FormDisclosure, useAutoOpenForm } from '@/components/form-disclosure';
+import type { SelectOption } from '@/components/option-select';
 
 export type ResourceOption = { value: string; label: string };
 export type ResourceField = { key: string; label: string; placeholder?: string; hint?: string; keyboardType?: TextInputProps['keyboardType']; optional?: boolean; clearToNull?: boolean; options?: ResourceOption[] };
+export type ResourceFilter = { key: string; label: string; options: SelectOption[]; getValue?: (item: ResourceItem) => string };
 export type ResourceItem = Record<string, unknown> & { public_id: string };
 
 function formatResourceValue(key: string, value: unknown) {
@@ -102,8 +104,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   loader: { marginVertical: 24 },
 });
 
-export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, subtitleKeys = [], listTitle = 'Éléments', emptyText = 'Aucun élément trouvé.', itemMarker, canEdit = true, canDelete = canEdit, canView = true, onCreated, searchable = false, summary, itemMetric, focusId, openFocused = false }: {
-  title: string; subtitle: string; endpoint: string; fields: ResourceField[]; titleKey: string; subtitleKeys?: string[]; listTitle?: string; emptyText?: string; itemMarker?: string; canEdit?: boolean; canDelete?: boolean; canView?: boolean; onCreated?: (item: ResourceItem) => void; searchable?: boolean; summary?: ReactNode; itemMetric?: (item: ResourceItem) => { value: string; label: string; warning?: boolean } | undefined; focusId?: string; openFocused?: boolean;
+export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, subtitleKeys = [], listTitle = 'Éléments', emptyText = 'Aucun élément trouvé.', itemMarker, canEdit = true, canDelete = canEdit, canView = true, onCreated, searchable = false, filters = [], summary, itemMetric, focusId, openFocused = false }: {
+  title: string; subtitle: string; endpoint: string; fields: ResourceField[]; titleKey: string; subtitleKeys?: string[]; listTitle?: string; emptyText?: string; itemMarker?: string; canEdit?: boolean; canDelete?: boolean; canView?: boolean; onCreated?: (item: ResourceItem) => void; searchable?: boolean; filters?: ResourceFilter[]; summary?: ReactNode; itemMetric?: (item: ResourceItem) => { value: string; label: string; warning?: boolean } | undefined; focusId?: string; openFocused?: boolean;
 }) {
   const router = useRouter();
   const t = useAppTheme();
@@ -120,6 +122,7 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const openedFocus = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -191,9 +194,17 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
   const optionalFields = fields.filter((field) => field.optional);
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('fr-FR');
-    if (!needle) return items;
-    return items.filter((item) => [titleKey, ...subtitleKeys].some((key) => String(item[key] ?? '').toLocaleLowerCase('fr-FR').includes(needle)));
-  }, [items, query, subtitleKeys, titleKey]);
+    return items.filter((item) => {
+      if (filters.some((filter) => {
+        const selected = filterValues[filter.key];
+        if (!selected) return false;
+        const itemValue = filter.getValue ? filter.getValue(item) : String(item[filter.key] ?? '');
+        return itemValue !== selected;
+      })) return false;
+      return !needle || [titleKey, ...subtitleKeys]
+        .some((key) => String(item[key] ?? '').toLocaleLowerCase('fr-FR').includes(needle));
+    });
+  }, [filterValues, filters, items, query, subtitleKeys, titleKey]);
   const orderedItems = useMemo(() => focusId
     ? [...filteredItems].sort((a, b) => Number(b.public_id === focusId) - Number(a.public_id === focusId))
     : filteredItems, [filteredItems, focusId]);
@@ -239,9 +250,20 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
       )}
       {!canEdit && <View style={styles.listHeader}><Text style={styles.section}>{listTitle}</Text></View>}
       {searchable && <TextInput value={query} onChangeText={(value) => { setQuery(value); setPage(1); }} placeholder={`Rechercher ${title.toLocaleLowerCase('fr-FR')}`} placeholderTextColor={t.secondaryText} style={styles.search} accessibilityLabel={`Rechercher ${title.toLocaleLowerCase('fr-FR')}`} returnKeyType="search" />}
+      {!!filters.length && <FormDisclosure label="Filtres">
+        {filters.map((filter) => <OptionSelect
+          key={filter.key}
+          label={filter.label}
+          options={filter.options}
+          value={filterValues[filter.key] || ''}
+          onChange={(value) => { setFilterValues((current) => ({ ...current, [filter.key]: value })); setPage(1); }}
+          optional
+          pageSize={6}
+        />)}
+      </FormDisclosure>}
       {!!error && !formOpen && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
       {loading ? <ActivityIndicator color={t.tint} style={styles.loader} />
-        : orderedItems.length === 0 ? <Text style={styles.empty}>{items.length ? 'Aucun résultat pour cette recherche.' : emptyText}</Text>
+        : orderedItems.length === 0 ? <Text style={styles.empty}>{items.length ? 'Aucun résultat pour cette recherche ou ces filtres.' : emptyText}</Text>
         : orderedItems.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE).map((item) => {
           const metric = itemMetric?.(item);
           return <View key={item.public_id} style={styles.row}>

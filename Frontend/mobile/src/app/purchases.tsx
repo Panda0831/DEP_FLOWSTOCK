@@ -21,6 +21,16 @@ const PAYMENT_MODES = [
 const OBTENTION_OPTIONS = [
   { value: 'commande', label: 'Commande' }, { value: 'achat_direct', label: 'Achat direct' },
 ];
+const PURCHASE_STATUSES = [
+  { value: 'en_attente', label: 'À recevoir' },
+  { value: 'partiellement_recu', label: 'Partiellement reçu' },
+  { value: 'recu', label: 'Reçu' },
+  { value: 'annule', label: 'Annulé' },
+];
+
+function normalizeSearch(value: string) {
+  return value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr-FR');
+}
 
 export default function PurchasesScreen() {
   const t = useAppTheme();
@@ -33,6 +43,10 @@ export default function PurchasesScreen() {
   const autoOpen = useAutoOpenForm();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [purchasePage, setPurchasePage] = useState(1);
+  const [purchaseSearch, setPurchaseSearch] = useState('');
+  const [supplierFilter, setSupplierFilter] = useState('');
+  const [productFilter, setProductFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [suppliers, setSuppliers] = useState<Fournisseur[]>([]);
   const [products, setProducts] = useState<Produit[]>([]);
   const [supplier, setSupplier] = useState('');
@@ -197,11 +211,36 @@ export default function PurchasesScreen() {
   const focusedId = typeof params.id === 'string' ? params.id : typeof params.focus === 'string' ? params.focus : '';
   const focusedPurchase = purchases.find((purchase) => purchase.public_id === focusedId);
   const detailMode = (!!params.id || params.detail === '1') && !!focusedPurchase;
+  const productOptions = useMemo(() => {
+    const productsById = new Map<string, string>();
+    for (const purchase of purchases) {
+      for (const line of purchase.lignes) productsById.set(line.product, line.nomProduit);
+    }
+    return [...productsById].map(([value, label]) => ({ value, label }));
+  }, [purchases]);
+  const filteredPurchases = useMemo(() => {
+    const needle = normalizeSearch(purchaseSearch);
+    return purchases.filter((purchase) => {
+      if (supplierFilter && purchase.supplier !== supplierFilter) return false;
+      if (productFilter && !purchase.lignes.some((line) => line.product === productFilter)) return false;
+      if (statusFilter && purchase.statut !== statusFilter) return false;
+      if (!needle) return true;
+      const productNames = purchase.lignes.map((line) => line.nomProduit).join(' ');
+      return normalizeSearch([
+        purchase.reference,
+        purchase.nomFournisseur,
+        purchase.lieuAchat,
+        productNames,
+        purchase.statut.replaceAll('_', ' '),
+        purchase.statut_paiement.replaceAll('_', ' '),
+      ].join(' ')).includes(needle);
+    });
+  }, [productFilter, purchaseSearch, purchases, statusFilter, supplierFilter]);
   const visiblePurchases = detailMode && focusedPurchase
     ? [focusedPurchase]
     : (focusedId
-      ? [...purchases].sort((a, b) => Number(b.public_id === focusedId) - Number(a.public_id === focusedId))
-      : purchases).slice((purchasePage - 1) * LIST_PAGE_SIZE, purchasePage * LIST_PAGE_SIZE);
+      ? [...filteredPurchases].sort((a, b) => Number(b.public_id === focusedId) - Number(a.public_id === focusedId))
+      : filteredPurchases).slice((purchasePage - 1) * LIST_PAGE_SIZE, purchasePage * LIST_PAGE_SIZE);
 
   if (!isAdmin) return <ScrollView style={ui.page} contentContainerStyle={ui.content}><AppPageHeading title="Achats" subtitle="Cette section est réservée aux administrateurs." /></ScrollView>;
 
@@ -249,7 +288,22 @@ export default function PurchasesScreen() {
           : `Réception terminée. Solde restant : ${Number(focusedPurchase.solde_restant).toLocaleString('fr-FR')} Ar.`}</Text>
     </View>}
     <View style={styles.sectionHeading}><Text style={ui.section}>{detailMode ? 'Gérer l’achat' : 'Historique des achats'}</Text><MotionPressable onPress={() => void load()}><Text style={ui.refresh}>Actualiser</Text></MotionPressable></View>
-    {loading ? <ActivityIndicator color={t.tint} style={{ marginVertical: 24 }} /> : purchases.length === 0 ? <Text style={ui.empty}>Aucun achat enregistré.</Text> : visiblePurchases.map((purchase, index) => <FadeIn key={purchase.public_id} delay={Math.min(index * 35, 280)}>
+    {!detailMode && <>
+      <TextInput
+        style={ui.input}
+        value={purchaseSearch}
+        onChangeText={(value) => { setPurchaseSearch(value); setPurchasePage(1); }}
+        placeholder="Rechercher un fournisseur, un article…"
+        placeholderTextColor={t.secondaryText}
+        accessibilityLabel="Rechercher dans les achats"
+      />
+      <FormDisclosure label="Filtres">
+        <OptionSelect label="Fournisseur" options={toOptions(suppliers, (item) => item.nomFournisseur)} value={supplierFilter} onChange={(value) => { setSupplierFilter(value); setPurchasePage(1); }} optional pageSize={5} />
+        <OptionSelect label="Article" options={productOptions} value={productFilter} onChange={(value) => { setProductFilter(value); setPurchasePage(1); }} optional pageSize={5} />
+        <OptionSelect label="Statut" options={PURCHASE_STATUSES} value={statusFilter} onChange={(value) => { setStatusFilter(value); setPurchasePage(1); }} optional pageSize={7} />
+      </FormDisclosure>
+    </>}
+    {loading ? <ActivityIndicator color={t.tint} style={{ marginVertical: 24 }} /> : purchases.length === 0 ? <Text style={ui.empty}>Aucun achat enregistré.</Text> : visiblePurchases.length === 0 ? <Text style={ui.empty}>Aucun achat ne correspond à ces filtres.</Text> : visiblePurchases.map((purchase, index) => <FadeIn key={purchase.public_id} delay={Math.min(index * 35, 280)}>
       <View style={[styles.purchase, purchase.public_id === focusedId && styles.purchaseFocused]}>
         <View style={styles.purchaseHeader}><View style={{ flex: 1 }}>{detailMode
           ? <Text style={styles.purchaseTitle}>{purchase.reference}</Text>
@@ -305,7 +359,7 @@ export default function PurchasesScreen() {
         {purchase.statut === 'en_attente' && purchase.montant_paye === '0.00' && <MotionPressable onPress={() => void cancel(purchase)} disabled={busy} style={styles.cancel}><Text style={styles.cancelText}>Annuler</Text></MotionPressable>}
       </View>
     </FadeIn>)}
-    {!loading && !detailMode && <PageNavigation page={purchasePage} totalItems={purchases.length} onPageChange={setPurchasePage} />}
+    {!loading && !detailMode && <PageNavigation page={purchasePage} totalItems={filteredPurchases.length} onPageChange={setPurchasePage} />}
   </ScrollView>;
 }
 

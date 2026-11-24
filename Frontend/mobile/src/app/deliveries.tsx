@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api, fetchAll, type Client, type Commande, type Delivery, type Produit } from '@/lib/session-api';
 import { Action, useUiStyles } from '@/components/resource-screen';
@@ -9,6 +9,22 @@ import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
 import { DeliveryLocationMap, type DeliveryMapPoint } from '@/components/delivery-location-map';
 import { orderDisplayName } from '@/lib/order-display';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
+import { OptionSelect, toOptions } from '@/components/option-select';
+import { FormDisclosure } from '@/components/form-disclosure';
+
+const DELIVERY_STATUSES = [
+  { value: 'en_cours', label: 'En cours' },
+  { value: 'en_preparation', label: 'En préparation' },
+  { value: 'expediee', label: 'Expédiée' },
+  { value: 'livree', label: 'Livrée' },
+  { value: 'echec', label: 'Échec' },
+  { value: 'retournee', label: 'Retournée' },
+  { value: 'annulee', label: 'Annulée' },
+];
+
+function normalizeSearch(value: string) {
+  return value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr-FR');
+}
 
 export default function DeliveriesScreen() {
   const t = useAppTheme();
@@ -21,6 +37,10 @@ export default function DeliveriesScreen() {
   const [products, setProducts] = useState<Produit[]>([]);
   const [items, setItems] = useState<Delivery[]>([]);
   const [deliveryPage, setDeliveryPage] = useState(1);
+  const [deliverySearch, setDeliverySearch] = useState('');
+  const [clientFilter, setClientFilter] = useState('');
+  const [productFilter, setProductFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -69,11 +89,37 @@ export default function DeliveriesScreen() {
   const focusedId = typeof params.id === 'string' ? params.id : typeof params.focus === 'string' ? params.focus : '';
   const focusedDelivery = items.find((delivery) => delivery.public_id === focusedId);
   const detailMode = (!!params.id || params.detail === '1') && !!focusedDelivery;
+  const productOptions = useMemo(() => {
+    const names = new Map(products.map((product) => [product.public_id, product.nomProduit]));
+    const ids = new Set(orders.flatMap((order) => order.lignes.map((line) => line.product)));
+    return [...ids].map((id) => ({ value: id, label: names.get(id) || `Article ${id.slice(0, 8)}` }));
+  }, [orders, products]);
+  const filteredDeliveries = useMemo(() => {
+    const needle = normalizeSearch(deliverySearch);
+    return items.filter((delivery) => {
+      const order = orders.find((item) => item.public_id === delivery.commande);
+      const client = clients.find((item) => item.public_id === order?.client || item.public_id === delivery.client);
+      if (clientFilter && client?.public_id !== clientFilter) return false;
+      if (productFilter && !order?.lignes.some((line) => line.product === productFilter)) return false;
+      if (statusFilter && delivery.statut !== statusFilter) return false;
+      if (!needle) return true;
+      const productNames = order?.lignes.map((line) =>
+        products.find((product) => product.public_id === line.product)?.nomProduit || line.product,
+      ).join(' ') || '';
+      return normalizeSearch([
+        client?.nomClient || '',
+        delivery.reference_commande || '',
+        delivery.adresse || '',
+        productNames,
+        delivery.statut.replaceAll('_', ' '),
+      ].join(' ')).includes(needle);
+    });
+  }, [clientFilter, clients, deliverySearch, items, orders, productFilter, products, statusFilter]);
   const visibleDeliveries = detailMode && focusedDelivery
     ? [focusedDelivery]
     : (focusedId
-      ? [...items].sort((a, b) => Number(b.public_id === focusedId) - Number(a.public_id === focusedId))
-      : items).slice((deliveryPage - 1) * LIST_PAGE_SIZE, deliveryPage * LIST_PAGE_SIZE);
+      ? [...filteredDeliveries].sort((a, b) => Number(b.public_id === focusedId) - Number(a.public_id === focusedId))
+      : filteredDeliveries).slice((deliveryPage - 1) * LIST_PAGE_SIZE, deliveryPage * LIST_PAGE_SIZE);
   const clientFor = (delivery: Delivery) => {
     const linkedOrder = orders.find((order) => order.public_id === delivery.commande);
     return clients.find((client) => client.public_id === linkedOrder?.client);
@@ -118,8 +164,23 @@ export default function DeliveriesScreen() {
     </View>}
     {!detailMode && <FadeIn delay={170}><DeliveryLocationMap points={locationPoints} /></FadeIn>}
     {detailMode && <MotionPressable onPress={() => router.back()} style={styles.backLink} accessibilityRole="button"><Text style={styles.backText}>‹ Retour aux livraisons</Text></MotionPressable>}
+    {!detailMode && <>
+      <TextInput
+        style={ui.input}
+        value={deliverySearch}
+        onChangeText={(value) => { setDeliverySearch(value); setDeliveryPage(1); }}
+        placeholder="Rechercher un client, un article…"
+        placeholderTextColor={t.secondaryText}
+        accessibilityLabel="Rechercher dans les livraisons"
+      />
+      <FormDisclosure label="Filtres">
+        <OptionSelect label="Client" options={toOptions(clients, (client) => client.nomClient, (client) => client.contact)} value={clientFilter} onChange={(value) => { setClientFilter(value); setDeliveryPage(1); }} optional pageSize={5} />
+        <OptionSelect label="Article" options={productOptions} value={productFilter} onChange={(value) => { setProductFilter(value); setDeliveryPage(1); }} optional pageSize={5} />
+        <OptionSelect label="Statut" options={DELIVERY_STATUSES} value={statusFilter} onChange={(value) => { setStatusFilter(value); setDeliveryPage(1); }} optional pageSize={7} />
+      </FormDisclosure>
+    </>}
     <View style={styles.sectionHeading}><Text style={ui.section}>{detailMode ? 'Gérer la livraison' : 'Suivi des livraisons'}</Text><MotionPressable onPress={() => void load()}><Text style={ui.refresh}>Actualiser</Text></MotionPressable></View>
-    {loading ? <ActivityIndicator color={t.tint} style={{ marginVertical: 24 }} /> : items.length === 0 ? <Text style={ui.empty}>Aucune livraison enregistrée.</Text> : visibleDeliveries.map((delivery, index) => <FadeIn key={delivery.public_id} delay={Math.min(index * 40, 280)}>
+    {loading ? <ActivityIndicator color={t.tint} style={{ marginVertical: 24 }} /> : items.length === 0 ? <Text style={ui.empty}>Aucune livraison enregistrée.</Text> : visibleDeliveries.length === 0 ? <Text style={ui.empty}>Aucune livraison ne correspond à ces filtres.</Text> : visibleDeliveries.map((delivery, index) => <FadeIn key={delivery.public_id} delay={Math.min(index * 40, 280)}>
       <View style={[styles.row, delivery.public_id === focusedId && styles.rowFocused]}>
         <View style={styles.deliveryTop}><View style={{ flex: 1 }}><MotionPressable onPress={() => router.push({ pathname: '/orders/[id]', params: { id: delivery.commande } })} accessibilityRole="link" accessibilityLabel={`Ouvrir la commande de ${orderName(delivery.commande)}`}><Text style={styles.name}>{orderName(delivery.commande)} ›</Text></MotionPressable><Text style={styles.detail}>Référence : {delivery.reference_commande || delivery.commande.slice(0, 8)}</Text></View><View style={styles.deliveryActions}><Text style={[styles.status, delivery.statut === 'livree' && styles.statusDone]}>{delivery.statut.replaceAll('_', ' ')}</Text>{!detailMode && <MotionPressable onPress={() => router.push({ pathname: '/deliveries/[id]', params: { id: delivery.public_id } })} accessibilityRole="link" accessibilityLabel={`Gérer la livraison de ${orderName(delivery.commande)}`}><Text style={styles.manageLink}>Gérer ›</Text></MotionPressable>}</View></View>
         {!!clientFor(delivery)?.contact && <Text style={styles.detail}>Contact : {clientFor(delivery)?.contact}</Text>}
@@ -135,7 +196,7 @@ export default function DeliveriesScreen() {
         {delivery.statut === 'livree' && <View style={styles.actions}><MotionPressable onPress={() => void mark(delivery.public_id, 'mark-returned')} disabled={busy} style={styles.failButton}><Text style={styles.failText}>Retour</Text></MotionPressable></View>}
       </View>
     </FadeIn>)}
-    {!loading && !detailMode && <PageNavigation page={deliveryPage} totalItems={items.length} onPageChange={setDeliveryPage} />}
+    {!loading && !detailMode && <PageNavigation page={deliveryPage} totalItems={filteredDeliveries.length} onPageChange={setDeliveryPage} />}
   </ScrollView>;
 }
 

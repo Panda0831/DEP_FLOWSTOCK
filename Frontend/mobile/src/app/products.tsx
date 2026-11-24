@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ResourceScreen, type ResourceItem } from '@/components/resource-screen';
+import { ResourceScreen, type ResourceFilter, type ResourceItem } from '@/components/resource-screen';
 import { useAuth } from '@/lib/auth-context';
 import { api, fetchAll, type Categorie, type Fournisseur, type Stock } from '@/lib/session-api';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -20,8 +20,8 @@ export default function ProductsScreen() {
   useEffect(() => {
     let active = true;
     Promise.all([
-      admin ? fetchAll<Categorie>('/categories/') : Promise.resolve([] as Categorie[]),
-      admin ? fetchAll<Fournisseur>('/suppliers/') : Promise.resolve([] as Fournisseur[]),
+      fetchAll<Categorie>('/categories/'),
+      fetchAll<Fournisseur>('/suppliers/'),
       api.get<Stock[]>('/stock/'),
     ])
       .then(([categoryList, supplierList, stockList]) => {
@@ -32,10 +32,35 @@ export default function ProductsScreen() {
       })
       .catch(() => { if (active) { setCategories([]); setSuppliers([]); setStock([]); } });
     return () => { active = false; };
-  }, [admin]);
+  }, []);
 
   const totalUnits = stock.reduce((sum, item) => sum + item.stock, 0);
   const lowCount = stock.filter((item) => item.stock <= item.seuilAlerte).length;
+  const productFilters = useMemo<ResourceFilter[]>(() => [
+    {
+      key: 'idCategorie',
+      label: 'Catégorie',
+      options: categories.map((item) => ({ value: item.public_id, label: item.nomCategorie || 'Catégorie' })),
+    },
+    {
+      key: 'idFournisseur',
+      label: 'Fournisseur',
+      options: suppliers.map((item) => ({ value: item.public_id, label: item.nomFournisseur || 'Fournisseur' })),
+    },
+    {
+      key: 'stockLevel',
+      label: 'Niveau de stock',
+      options: [
+        { value: 'low', label: 'À réapprovisionner' },
+        { value: 'available', label: 'En stock' },
+      ],
+      getValue: (item) => {
+        const inventory = stock.find((entry) => entry.public_id === item.public_id);
+        const warning = !inventory || inventory.stock <= (inventory.seuilAlerte ?? Number(item.seuilAlerte || 0));
+        return warning ? 'low' : 'available';
+      },
+    },
+  ], [categories, stock, suppliers]);
   const summary = <View style={styles.summary}>
     <View style={styles.summaryCard}><Text style={styles.summaryLabel}>Références</Text><Text style={styles.summaryValue}>{stock.length}</Text></View>
     <View style={styles.summaryCard}><Text style={styles.summaryLabel}>Unités en stock</Text><Text style={styles.summaryValue}>{totalUnits.toLocaleString('fr-FR')}</Text></View>
@@ -60,6 +85,7 @@ export default function ProductsScreen() {
     itemMarker="PRD"
     canEdit={!!admin}
     searchable
+    filters={productFilters}
     focusId={typeof params.focus === 'string' ? params.focus : undefined}
     openFocused={params.open === '1'}
     summary={summary}
