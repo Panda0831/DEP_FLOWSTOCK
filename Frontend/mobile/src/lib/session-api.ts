@@ -178,3 +178,17 @@ export const api = {
   put: <T>(path: string, body: unknown) => request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
   delete: (path: string) => request<void>(path, { method: 'DELETE' }),
 };
+
+/** Follows Django pagination so select lists never stop at the first 20 items. */
+export async function fetchAll<T>(path: string, params: Record<string, string | number | boolean | undefined> = {}): Promise<T[]> {
+  const items: T[] = [];
+  let page = 1;
+  for (;;) {
+    const result = await api.get<T[] | Page<T>>(path, { ...params, page });
+    if (Array.isArray(result)) return [...items, ...result];
+    items.push(...result.results);
+    if (!result.next) break;
+    page += 1;
+  }
+  return items;
+}

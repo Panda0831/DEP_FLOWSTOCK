@@ -25,12 +25,12 @@ export default function SignupScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F5F8F5', justifyContent: 'center', padding: 22 },
-  card: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: '#FFFFFF', borderRadius: 24, padding: 28, borderWidth: 1, borderColor: '#DDE9DF', shadowColor: '#38704A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 20, elevation: 3 },
+  card: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: '#FFFFFF', borderRadius: 24, padding: 28, borderWidth: 1, borderColor: '#DCE7E2', shadowColor: '#38704A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 20, elevation: 3 },
   copyBlock: { marginTop: 12 },
   divider: { marginTop: 20 },
-  eyebrow: { color: '#078343', fontSize: 10, fontWeight: '800', letterSpacing: 1.2, textAlign: 'center' },
-  title: { color: '#173D2B', fontSize: 27, fontWeight: '800', marginTop: 9, textAlign: 'center' },
+  eyebrow: { color: '#11645D', fontSize: 10, fontWeight: '800', letterSpacing: 1.2, textAlign: 'center' },
+  title: { color: '#18332F', fontSize: 27, fontWeight: '800', marginTop: 9, textAlign: 'center' },
   copy: { color: '#65736A', fontSize: 14, lineHeight: 22, marginTop: 11, textAlign: 'center' },
-  button: { minHeight: 52, borderRadius: 14, backgroundColor: '#078343', justifyContent: 'center', alignItems: 'center', marginTop: 24 },
+  button: { minHeight: 52, borderRadius: 14, backgroundColor: '#11645D', justifyContent: 'center', alignItems: 'center', marginTop: 24 },
   buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
 });

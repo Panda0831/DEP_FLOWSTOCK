@@ -19,7 +19,7 @@ import { getRememberedEmail, requestPasswordReset, setRememberedEmail } from '@/
 import { BrandLockup } from '@/components/brand-lockup';
 import { BrandDivider, FadeIn, MotionPressable } from '@/components/motion';
 
-const GREEN = '#078343';
+const GREEN = '#11645D';
 
 function FieldIcon({ kind }: { kind: 'person' | 'mail' | 'lock' }) {
   if (kind === 'mail') return <Text style={styles.mailIcon}>✉</Text>;
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   },
   brand: { alignItems: 'center', marginBottom: 26 },
   form: { gap: 15 },
-  heading: { color: '#173D2B', fontSize: 28, fontWeight: '800', textAlign: 'center', marginBottom: 7 },
+  heading: { color: '#18332F', fontSize: 28, fontWeight: '800', textAlign: 'center', marginBottom: 7 },
   field: {
     height: 58,
     borderWidth: 1,
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   lockIcon: { width: 19, height: 22, justifyContent: 'flex-end', alignItems: 'center' },
   lockArch: { width: 12, height: 10, borderWidth: 1.7, borderColor: GREEN, borderBottomWidth: 0, borderTopLeftRadius: 7, borderTopRightRadius: 7 },
   lockBody: { width: 17, height: 12, borderWidth: 1.7, borderColor: GREEN, borderRadius: 3, backgroundColor: '#FFFFFF' },
-  input: { flex: 1, color: '#173D2B', fontSize: 16, paddingVertical: 0 },
+  input: { flex: 1, color: '#18332F', fontSize: 16, paddingVertical: 0 },
   eyeIcon: {
     width: 22,
     height: 15,
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   forgotButton: { paddingVertical: 2 },
   forgotText: { color: GREEN, fontWeight: '600', fontSize: 14 },
   message: { color: '#A33B31', fontSize: 13, lineHeight: 18, marginTop: -4, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#FFF0EF', borderRadius: 11 },
-  successMessage: { color: GREEN, backgroundColor: '#EAF7EE' },
+  successMessage: { color: GREEN, backgroundColor: '#E5F2EF' },
   disabled: { opacity: 0.72 },
   primaryButton: {
     height: 58,

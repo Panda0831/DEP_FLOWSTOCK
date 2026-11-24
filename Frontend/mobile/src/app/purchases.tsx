@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { FadeIn, MotionPressable } from '@/components/motion';
+import { FormDisclosure, useAutoOpenForm } from '@/components/form-disclosure';
+import { OptionSelect, toOptions } from '@/components/option-select';
+import { QuantityField } from '@/components/quantity-field';
+import { LIST_PAGE_SIZE, ShowMore } from '@/components/show-more';
 import { useAuth } from '@/lib/auth-context';
-import { api, type Page, type Produit, type Fournisseur, type Purchase } from '@/lib/session-api';
+import { api, fetchAll, type Produit, type Fournisseur, type Purchase } from '@/lib/session-api';
 
 type DraftLine = { product: string; quantity: string; unit_price: string };
 const PAYMENT_MODES = [
@@ -12,11 +17,18 @@ const PAYMENT_MODES = [
   { value: 'orange_money', label: 'Orange Money' }, { value: 'airtel_money', label: 'Airtel Money' },
   { value: 'virement', label: 'Virement' }, { value: 'autre', label: 'Autre' },
 ];
+const OBTENTION_OPTIONS = [
+  { value: 'commande', label: 'Commande' }, { value: 'achat_direct', label: 'Achat direct' },
+];
 
 export default function PurchasesScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ focus?: string; step?: string; supplier?: string; product?: string }>();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN' || user?.is_staff;
+  const autoOpen = useAutoOpenForm();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [purchaseLimit, setPurchaseLimit] = useState(LIST_PAGE_SIZE);
   const [suppliers, setSuppliers] = useState<Fournisseur[]>([]);
   const [products, setProducts] = useState<Produit[]>([]);
   const [supplier, setSupplier] = useState('');
@@ -27,6 +39,7 @@ export default function PurchasesScreen() {
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [location, setLocation] = useState('');
   const [obtention, setObtention] = useState<'commande' | 'achat_direct'>('commande');
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [receiveQuantities, setReceiveQuantities] = useState<Record<string, Record<string, string>>>({});
   const [returnQuantities, setReturnQuantities] = useState<Record<string, Record<string, string>>>({});
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, string>>({});
@@ -39,14 +52,15 @@ export default function PurchasesScreen() {
     setLoading(true);
     setError('');
     try {
-      const [purchasesResult, suppliersResult, productsResult] = await Promise.all([
-        api.get<Page<Purchase> | Purchase[]>('/purchases/'),
-        api.get<Page<Fournisseur> | Fournisseur[]>('/suppliers/'),
-        api.get<Page<Produit> | Produit[]>('/products/', { active: true }),
+      const [purchaseList, supplierList, productList] = await Promise.all([
+        fetchAll<Purchase>('/purchases/'),
+        fetchAll<Fournisseur>('/suppliers/'),
+        fetchAll<Produit>('/products/', { active: true }),
       ]);
-      setPurchases(Array.isArray(purchasesResult) ? purchasesResult : purchasesResult.results);
-      setSuppliers(Array.isArray(suppliersResult) ? suppliersResult : suppliersResult.results);
-      setProducts(Array.isArray(productsResult) ? productsResult : productsResult.results);
+      setPurchases(purchaseList);
+      setSuppliers(supplierList);
+      setProducts(productList);
+      setPurchaseLimit(LIST_PAGE_SIZE);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Chargement des achats impossible.');
     } finally {
@@ -55,6 +69,19 @@ export default function PurchasesScreen() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const selectedSupplier = typeof params.supplier === 'string'
+      ? suppliers.find((item) => item.public_id === params.supplier)
+      : suppliers.length === 1 ? suppliers[0] : undefined;
+    if (selectedSupplier) setSupplier(selectedSupplier.public_id);
+    const selected = typeof params.product === 'string'
+      ? products.find((item) => item.public_id === params.product)
+      : products.length === 1 ? products[0] : undefined;
+    if (selected) {
+      setSelectedProduct(selected.public_id);
+      setUnitPrice(selected.prixAchat || '0');
+    }
+  }, [params.product, params.supplier, products, suppliers]);
 
   const addLine = () => {
     if (!selectedProduct || Number(quantity) < 1 || Number(unitPrice) < 0 || !unitPrice) {
@@ -86,10 +113,13 @@ export default function PurchasesScreen() {
         modeObtention: obtention,
         items: lines.map((line) => ({ product: line.product, quantity: Number(line.quantity), unit_price: line.unit_price })),
       };
-      if (editingPurchase) await api.patch(`/purchases/${editingPurchase.public_id}/`, payload);
-      else await api.post('/purchases/', payload);
-      setSupplier(''); setLines([]); setLocation(''); setEditingPurchase(null); setObtention('commande');
+      const wasEditing = !!editingPurchase;
+      const saved = editingPurchase
+        ? await api.patch<Purchase>(`/purchases/${editingPurchase.public_id}/`, payload)
+        : await api.post<Purchase>('/purchases/', payload);
+      setSupplier(''); setLines([]); setLocation(''); setEditingPurchase(null); setObtention('commande'); setDetailsOpen(false);
       await load();
+      if (!wasEditing) router.replace({ pathname: '/purchases', params: { focus: saved.public_id, step: 'receive' } });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Création de l’achat impossible.');
     } finally {
@@ -102,6 +132,7 @@ export default function PurchasesScreen() {
     setSupplier(purchase.supplier);
     setLocation(purchase.lieuAchat);
     setObtention(purchase.modeObtention);
+    setDetailsOpen(true);
     setLines(purchase.lignes.map((line) => ({ product: line.product, quantity: String(line.quantite), unit_price: String(line.prixUnitaire) })));
     setError('');
   };
@@ -116,6 +147,8 @@ export default function PurchasesScreen() {
       await api.post(`/purchases/${purchase.public_id}/receive/`, { items });
       setReceiveQuantities((current) => ({ ...current, [purchase.public_id]: {} }));
       await load();
+      const pendingAfterReceive = purchase.lignes.some((line) => line.quantite_recue + (items.find((item) => item.product === line.product)?.quantity || 0) < line.quantite);
+      router.replace({ pathname: '/purchases', params: { focus: purchase.public_id, step: pendingAfterReceive ? 'receive' : 'payment' } });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Réception impossible.');
     } finally { setBusy(false); }
@@ -144,6 +177,7 @@ export default function PurchasesScreen() {
       await api.post('/payments/', { operation: 'purchase', public_id: purchase.public_id, montant, mode: paymentMode });
       setPaymentAmounts((current) => ({ ...current, [purchase.public_id]: '' }));
       await load();
+      router.replace({ pathname: '/purchases', params: { focus: purchase.public_id, step: montant >= Number(purchase.solde_restant) ? 'done' : 'payment' } });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Paiement impossible.');
     } finally { setBusy(false); }
@@ -156,41 +190,68 @@ export default function PurchasesScreen() {
     finally { setBusy(false); }
   };
 
+  const focusedId = typeof params.focus === 'string' ? params.focus : '';
+  const focusedPurchase = purchases.find((purchase) => purchase.public_id === focusedId);
+  const visiblePurchases = focusedId
+    ? [...purchases].sort((a, b) => Number(b.public_id === focusedId) - Number(a.public_id === focusedId)).slice(0, purchaseLimit)
+    : purchases.slice(0, purchaseLimit);
+
   if (!isAdmin) return <ScrollView style={ui.page} contentContainerStyle={ui.content}><AppPageHeading title="Achats" subtitle="Cette section est réservée aux administrateurs." /></ScrollView>;
 
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
     <AppPageHeading title="Achats" subtitle="Commandez auprès de vos fournisseurs et réceptionnez les produits en plusieurs fois." />
-    <FadeIn delay={120}><View style={ui.card}>
-      <Text style={ui.cardTitle}>{editingPurchase ? `Modifier ${editingPurchase.reference}` : 'Nouvel achat'}</Text>
-      <Text style={styles.label}>Fournisseur</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choices}>
-        {suppliers.map((item) => <Choice key={item.public_id} label={item.nomFournisseur} selected={supplier === item.public_id} onPress={() => setSupplier(item.public_id)} />)}
-      </ScrollView>
-      <Text style={styles.label}>Mode d’obtention</Text>
-      <View style={styles.choices}><Choice label="Commande" selected={obtention === 'commande'} onPress={() => setObtention('commande')} /><Choice label="Achat direct" selected={obtention === 'achat_direct'} onPress={() => setObtention('achat_direct')} /></View>
-      <TextInput style={ui.input} value={location} onChangeText={setLocation} placeholder="Lieu d’achat (facultatif)" />
-      <Text style={styles.label}>Ajouter un produit</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choices}>
-        {products.map((item) => <Choice key={item.public_id} label={item.nomProduit} selected={selectedProduct === item.public_id} onPress={() => { setSelectedProduct(item.public_id); setUnitPrice(item.prixAchat || '0'); }} />)}
-      </ScrollView>
-      <View style={styles.inlineInputs}><TextInput style={[ui.input, styles.numberInput]} value={quantity} onChangeText={setQuantity} keyboardType="number-pad" placeholder="Quantité" /><TextInput style={[ui.input, styles.numberInput]} value={unitPrice} onChangeText={setUnitPrice} keyboardType="decimal-pad" placeholder="Prix unitaire (Ar)" /></View>
-      <Action label="Ajouter à l’achat" onPress={addLine} />
+    <FormDisclosure label={editingPurchase ? `Modifier ${editingPurchase.reference}` : 'Nouvel achat'} openWhen={autoOpen ? '1' : (editingPurchase?.public_id ?? null)}>
+      <View style={ui.card}>
+      {!suppliers.length && <MotionPressable onPress={() => router.push({ pathname: '/suppliers', params: { add: '1', flow: 'purchase' } })} accessibilityRole="link"><Text style={styles.helper}>Ajouter un fournisseur ›</Text></MotionPressable>}
+      <OptionSelect label="Fournisseur" options={toOptions(suppliers, (item) => item.nomFournisseur)} value={supplier} onChange={setSupplier} placeholder="Choisir un fournisseur" />
+      {!products.length && !!supplier && <MotionPressable onPress={() => router.push({ pathname: '/products', params: { add: '1', flow: 'purchase', supplier } })} accessibilityRole="link"><Text style={styles.helper}>Ajouter un produit ›</Text></MotionPressable>}
+      <OptionSelect
+        label="Ajouter un produit"
+        options={toOptions(products, (item) => item.nomProduit, (item) => `${item.prixAchat || '0'} Ar`)}
+        value={selectedProduct}
+        onChange={(value) => { setSelectedProduct(value); setUnitPrice(products.find((item) => item.public_id === value)?.prixAchat || '0'); }}
+        placeholder="Choisir un produit"
+      />
+      <QuantityField value={quantity} onChange={setQuantity} />
+      <Text style={styles.fieldLabel}>Prix d’achat unitaire (Ar)</Text>
+      <TextInput style={ui.input} value={unitPrice} onChangeText={setUnitPrice} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#526864" accessibilityLabel="Prix d’achat unitaire en ariary" />
+      <Action label="Ajouter cet article" variant="secondary" onPress={addLine} disabled={!selectedProduct || !(Number(quantity) >= 1) || !(Number(unitPrice) >= 0) || !unitPrice} />
       {lines.map((line) => <View style={styles.draftLine} key={line.product}><Text style={styles.lineName}>{products.find((p) => p.public_id === line.product)?.nomProduit}</Text><Text style={styles.lineDetail}>{line.quantity} × {line.unit_price} Ar</Text><MotionPressable onPress={() => setLines((current) => current.filter((item) => item.product !== line.product))}><Text style={styles.remove}>Retirer</Text></MotionPressable></View>)}
       <View style={styles.modeRow}><Text style={styles.totalLabel}>Total prévu</Text><Text style={styles.totalValue}>{lines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.unit_price), 0).toLocaleString('fr-FR')} Ar</Text></View>
-      <Action label={busy ? 'Enregistrement…' : editingPurchase ? 'Enregistrer les modifications' : 'Créer l’achat'} onPress={() => void savePurchase()} disabled={busy || !lines.length} />
-      {editingPurchase && <MotionPressable onPress={() => { setEditingPurchase(null); setSupplier(''); setLines([]); setLocation(''); }} style={styles.cancel}><Text style={styles.cancelText}>Quitter la modification</Text></MotionPressable>}
-    </View></FadeIn>
+      <MotionPressable onPress={() => setDetailsOpen((open) => !open)} style={styles.detailsToggle} accessibilityRole="button" accessibilityState={{ expanded: detailsOpen }}>
+        <Text style={styles.detailsToggleText}>{detailsOpen ? 'Masquer les options' : 'Options d’achat (facultatif)'}</Text>
+      </MotionPressable>
+      {detailsOpen && <View style={styles.detailsBox}>
+        <OptionSelect label="Mode d’obtention" options={OBTENTION_OPTIONS} value={obtention} onChange={(value) => setObtention(value as 'commande' | 'achat_direct')} />
+        <Text style={styles.fieldLabel}>Lieu d’achat</Text>
+        <TextInput style={ui.input} value={location} onChangeText={setLocation} placeholder="Ex. Marché central" placeholderTextColor="#526864" accessibilityLabel="Lieu d’achat, facultatif" />
+      </View>}
+      <Action label={busy ? 'Enregistrement…' : 'Enregistrer'} onPress={() => void savePurchase()} disabled={busy || !supplier || !lines.length} />
+        {editingPurchase && <MotionPressable onPress={() => { setEditingPurchase(null); setSupplier(''); setLines([]); setLocation(''); setDetailsOpen(false); }} style={styles.cancel}><Text style={styles.cancelText}>Annuler la modification</Text></MotionPressable>}
+      </View>
+    </FormDisclosure>
     {!!error && <Text style={ui.error}>{error}</Text>}
+    {!loading && focusedPurchase && <View style={styles.workflow}>
+      <Text style={styles.workflowEyebrow}>{params.step === 'done' ? 'ACHAT TERMINÉ' : 'ÉTAPE SUIVANTE'}</Text>
+      <Text style={styles.workflowTitle}>{focusedPurchase.reference}</Text>
+      <Text style={styles.workflowText}>{focusedPurchase.statut_paiement === 'paye' && focusedPurchase.lignes.every((line) => line.quantite_recue >= line.quantite)
+        ? 'Toutes les quantités sont reçues et le paiement est soldé.'
+        : focusedPurchase.lignes.some((line) => line.quantite_recue < line.quantite)
+          ? 'Saisissez les quantités réellement reçues dans cet achat. Le stock sera mis à jour à la réception.'
+          : `Réception terminée. Solde restant : ${Number(focusedPurchase.solde_restant).toLocaleString('fr-FR')} Ar.`}</Text>
+    </View>}
     <View style={styles.sectionHeading}><Text style={ui.section}>Historique des achats</Text><MotionPressable onPress={() => void load()}><Text style={ui.refresh}>Actualiser</Text></MotionPressable></View>
-    {loading ? <ActivityIndicator color="#078343" style={{ marginVertical: 24 }} /> : purchases.length === 0 ? <Text style={ui.empty}>Aucun achat enregistré.</Text> : purchases.map((purchase, index) => <FadeIn key={purchase.public_id} delay={Math.min(index * 35, 280)}>
-      <View style={styles.purchase}>
+    {loading ? <ActivityIndicator color="#11645D" style={{ marginVertical: 24 }} /> : purchases.length === 0 ? <Text style={ui.empty}>Aucun achat enregistré.</Text> : visiblePurchases.map((purchase, index) => <FadeIn key={purchase.public_id} delay={Math.min(index * 35, 280)}>
+      <View style={[styles.purchase, purchase.public_id === focusedId && styles.purchaseFocused]}>
         <View style={styles.purchaseHeader}><View><Text style={styles.purchaseTitle}>{purchase.reference}</Text><Text style={styles.purchaseSub}>{purchase.nomFournisseur} · {purchase.dateCommande}</Text></View><Text style={styles.badge}>{purchase.statut.replaceAll('_', ' ')}</Text></View>
         {purchase.lignes.map((line) => {
           const restant = line.quantite - line.quantite_recue;
           return <View key={line.product} style={styles.purchaseLine}>
-            <View style={{ flex: 1 }}><Text style={styles.lineName}>{line.nomProduit}</Text><Text style={styles.lineDetail}>Reçu {line.quantite_recue} / {line.quantite} · retourné {line.quantite_retournee} · {line.prixUnitaire} Ar</Text></View>
-            {restant > 0 && <TextInput style={styles.receiveInput} value={receiveQuantities[purchase.public_id]?.[line.product] || ''} onChangeText={(value) => setReceiveQuantities((current) => ({ ...current, [purchase.public_id]: { ...current[purchase.public_id], [line.product]: value } }))} keyboardType="number-pad" placeholder={`≤ ${restant}`} />}
-            {(line.quantite_recue - line.quantite_retournee) > 0 && <TextInput style={styles.receiveInput} value={returnQuantities[purchase.public_id]?.[line.product] || ''} onChangeText={(value) => setReturnQuantities((current) => ({ ...current, [purchase.public_id]: { ...current[purchase.public_id], [line.product]: value } }))} keyboardType="number-pad" placeholder={`retour ≤ ${line.quantite_recue - line.quantite_retournee}`} />}
+            <View style={{ flex: 1 }}><Text style={styles.lineName}>{line.nomProduit}</Text><Text style={styles.lineDetail}>Reçu {line.quantite_recue} sur {line.quantite} · retourné {line.quantite_retournee}</Text></View>
+            {(restant > 0 || (line.quantite_recue - line.quantite_retournee) > 0) && <View style={styles.quantityActions}>
+              {restant > 0 && <View style={styles.quantityAction}><Text style={styles.inputLabel}>À recevoir</Text><TextInput style={styles.receiveInput} value={receiveQuantities[purchase.public_id]?.[line.product] || ''} onChangeText={(value) => setReceiveQuantities((current) => ({ ...current, [purchase.public_id]: { ...current[purchase.public_id], [line.product]: value } }))} keyboardType="number-pad" placeholder={`Max. ${restant}`} placeholderTextColor="#526864" accessibilityLabel={`Quantité à recevoir pour ${line.nomProduit}, maximum ${restant}`} />}</View>}
+              {(line.quantite_recue - line.quantite_retournee) > 0 && <View style={styles.quantityAction}><Text style={styles.inputLabel}>À retourner</Text><TextInput style={styles.receiveInput} value={returnQuantities[purchase.public_id]?.[line.product] || ''} onChangeText={(value) => setReturnQuantities((current) => ({ ...current, [purchase.public_id]: { ...current[purchase.public_id], [line.product]: value } }))} keyboardType="number-pad" placeholder={`Max. ${line.quantite_recue - line.quantite_retournee}`} placeholderTextColor="#526864" accessibilityLabel={`Quantité à retourner pour ${line.nomProduit}, maximum ${line.quantite_recue - line.quantite_retournee}`} />}</View>}
+            </View>}
           </View>;
         })}
         <View style={styles.totals}><Text style={styles.totalLabel}>Total {Number(purchase.montant_total).toLocaleString('fr-FR')} Ar</Text><Text style={styles.totalLabel}>Payé {Number(purchase.montant_paye).toLocaleString('fr-FR')} Ar</Text><Text style={styles.totalValue}>Reste {Number(purchase.solde_restant).toLocaleString('fr-FR')} Ar</Text></View>
@@ -198,51 +259,53 @@ export default function PurchasesScreen() {
         {!!purchase.receptions.length && <Text style={styles.history}>{purchase.receptions.length} réception(s) · dernière : {purchase.receptions[0].date}</Text>}
         {purchase.paiements.map((payment) => <Text style={styles.history} key={payment.public_id}>{payment.date} · {Number(payment.montant).toLocaleString('fr-FR')} Ar · {payment.mode}</Text>)}
         {!!purchase.historique.length && <Text style={styles.history}>Historique : {purchase.historique.map((event) => `${event.evenement} (${event.utilisateur})`).join(' · ')}</Text>}
-        {purchase.statut === 'en_attente' && purchase.montant_paye === '0.00' && <MotionPressable onPress={() => editPurchase(purchase)} disabled={busy} style={styles.cancel}><Text style={styles.editText}>Modifier l’achat</Text></MotionPressable>}
-        {purchase.statut !== 'recu' && purchase.statut !== 'annule' && <View style={styles.actions}><Action label={busy ? '…' : 'Enregistrer la réception'} onPress={() => void receive(purchase)} disabled={busy} /></View>}
-        {purchase.lignes.some((line) => line.quantite_recue > line.quantite_retournee) && purchase.statut !== 'annule' && <View style={styles.actions}><Action label={busy ? '…' : 'Retourner au fournisseur'} onPress={() => void returnToSupplier(purchase)} disabled={busy} /></View>}
-        {Number(purchase.solde_restant) > 0 && purchase.statut !== 'annule' && <View style={styles.paymentBox}><Text style={styles.label}>Enregistrer un paiement fournisseur</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choices}>{PAYMENT_MODES.map((mode) => <Choice key={mode.value} label={mode.label} selected={paymentMode === mode.value} onPress={() => setPaymentMode(mode.value)} />)}</ScrollView><View style={styles.paymentRow}><TextInput style={[ui.input, styles.paymentInput]} value={paymentAmounts[purchase.public_id] || ''} onChangeText={(value) => setPaymentAmounts((current) => ({ ...current, [purchase.public_id]: value }))} keyboardType="decimal-pad" placeholder="Montant versé (Ar)" /><Action label="Ajouter paiement" onPress={() => void pay(purchase)} disabled={busy} /></View></View>}
-        {purchase.statut === 'en_attente' && purchase.montant_paye === '0.00' && <MotionPressable onPress={() => void cancel(purchase)} disabled={busy} style={styles.cancel}><Text style={styles.cancelText}>Annuler l’achat</Text></MotionPressable>}
+        {purchase.statut === 'en_attente' && purchase.montant_paye === '0.00' && <MotionPressable onPress={() => editPurchase(purchase)} disabled={busy} style={styles.cancel}><Text style={styles.editText}>Modifier</Text></MotionPressable>}
+        {purchase.statut !== 'recu' && purchase.statut !== 'annule' && <View style={styles.actions}><Action label={busy ? '…' : 'Réceptionner'} onPress={() => void receive(purchase)} disabled={busy || !purchase.lignes.some((line) => Number(receiveQuantities[purchase.public_id]?.[line.product]) > 0)} /></View>}
+        {purchase.lignes.some((line) => line.quantite_recue > line.quantite_retournee) && purchase.statut !== 'annule' && <View style={styles.actions}><Action label={busy ? '…' : 'Retourner'} onPress={() => void returnToSupplier(purchase)} disabled={busy || !purchase.lignes.some((line) => Number(returnQuantities[purchase.public_id]?.[line.product]) > 0)} /></View>}
+        {Number(purchase.solde_restant) > 0 && purchase.statut !== 'annule' && <View style={styles.paymentBox}><OptionSelect label="Mode de paiement" options={PAYMENT_MODES} value={paymentMode} onChange={setPaymentMode} pageSize={PAYMENT_MODES.length} /><Text style={styles.inputLabel}>Montant versé (Ar)</Text><View style={styles.paymentRow}><TextInput style={[ui.input, styles.paymentInput]} value={paymentAmounts[purchase.public_id] || ''} onChangeText={(value) => setPaymentAmounts((current) => ({ ...current, [purchase.public_id]: value }))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor="#526864" accessibilityLabel={`Montant à payer pour l’achat ${purchase.reference}, solde ${purchase.solde_restant} ariary`} /><Action label="Enregistrer le paiement" onPress={() => void pay(purchase)} disabled={busy || !(Number(paymentAmounts[purchase.public_id]) > 0)} /></View></View>}
+        {purchase.statut === 'en_attente' && purchase.montant_paye === '0.00' && <MotionPressable onPress={() => void cancel(purchase)} disabled={busy} style={styles.cancel}><Text style={styles.cancelText}>Annuler</Text></MotionPressable>}
       </View>
     </FadeIn>)}
+    {!loading && <ShowMore remaining={purchases.length - purchaseLimit} onPress={() => setPurchaseLimit((current) => current + LIST_PAGE_SIZE)} />}
   </ScrollView>;
 }
 
-function Choice({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  return <MotionPressable onPress={onPress} style={[styles.choice, selected && styles.choiceSelected]}><Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{label}</Text></MotionPressable>;
-}
-
 const styles = StyleSheet.create({
-  label: { color: '#68736B', fontSize: 12, marginTop: 7, marginBottom: 8 },
-  choices: { flexDirection: 'row', gap: 8, paddingBottom: 8 },
-  choice: { paddingVertical: 9, paddingHorizontal: 12, borderRadius: 11, backgroundColor: '#F0F4F1' },
-  choiceSelected: { backgroundColor: '#078343' },
-  choiceText: { color: '#465149', fontSize: 12, fontWeight: '600' },
-  choiceTextSelected: { color: '#FFFFFF' },
-  inlineInputs: { flexDirection: 'row', gap: 9 },
-  numberInput: { flex: 1, minWidth: 0 },
+  fieldLabel: { color: '#18332F', fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  helper: { color: '#11645D', fontSize: 14, fontWeight: '600', marginBottom: 12 },
+  workflow: { padding: 15, marginBottom: 18, borderRadius: 16, borderWidth: 1, borderColor: '#B9DCD4', backgroundColor: '#E5F2EF' },
+  workflowEyebrow: { color: '#11645D', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  workflowTitle: { color: '#18332F', fontSize: 17, fontWeight: '700', marginTop: 5 },
+  workflowText: { color: '#526864', fontSize: 14, lineHeight: 20, marginTop: 5 },
+  detailsToggle: { minHeight: 48, justifyContent: 'center' },
+  detailsToggleText: { color: '#11645D', fontSize: 14, fontWeight: '600' },
+  detailsBox: { borderLeftWidth: 2, borderLeftColor: '#DCE7E2', paddingLeft: 12, marginBottom: 8 },
   draftLine: { flexDirection: 'row', alignItems: 'center', gap: 10, borderTopWidth: 1, borderTopColor: '#EEF2EE', paddingVertical: 10 },
-  lineName: { color: '#173D2B', fontSize: 13, fontWeight: '700' },
-  lineDetail: { color: '#77827A', fontSize: 11, marginTop: 3 },
-  remove: { color: '#B63838', fontSize: 11, fontWeight: '700' },
+  lineName: { color: '#18332F', fontSize: 13, fontWeight: '700' },
+  lineDetail: { color: '#526864', fontSize: 11, marginTop: 3 },
+  remove: { color: '#A43D32', fontSize: 11, fontWeight: '700' },
   modeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
-  totalLabel: { color: '#69756D', fontSize: 11, fontWeight: '600' },
-  totalValue: { color: '#173D2B', fontSize: 13, fontWeight: '800' },
+  totalLabel: { color: '#526864', fontSize: 11, fontWeight: '600' },
+  totalValue: { color: '#18332F', fontSize: 13, fontWeight: '800' },
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  purchase: { backgroundColor: '#FFFFFF', padding: 16, borderColor: '#DDE9DF', borderWidth: 1, borderRadius: 16, marginBottom: 11 },
+  purchase: { backgroundColor: '#FFFFFF', padding: 16, borderColor: '#DCE7E2', borderWidth: 1, borderRadius: 16, marginBottom: 11 },
+  purchaseFocused: { borderColor: '#11645D', borderWidth: 2 },
   purchaseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10 },
-  purchaseTitle: { color: '#173D2B', fontWeight: '800', fontSize: 14 },
-  purchaseSub: { color: '#77827A', fontSize: 11, marginTop: 4 },
-  badge: { color: '#078343', backgroundColor: '#E7F5EC', overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10, fontSize: 10, fontWeight: '800', textTransform: 'capitalize' },
+  purchaseTitle: { color: '#18332F', fontWeight: '800', fontSize: 14 },
+  purchaseSub: { color: '#526864', fontSize: 11, marginTop: 4 },
+  badge: { color: '#11645D', backgroundColor: '#E5F2EF', overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10, fontSize: 12, fontWeight: '800', textTransform: 'capitalize' },
   purchaseLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, borderTopWidth: 1, borderTopColor: '#EEF2EE', paddingVertical: 10 },
-  receiveInput: { width: 78, height: 42, borderWidth: 1, borderColor: '#D9E0DA', borderRadius: 10, paddingHorizontal: 9, textAlign: 'center', color: '#142039' },
+  quantityActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  quantityAction: { flex: 1, minWidth: 115 },
+  inputLabel: { color: '#526864', fontSize: 13, fontWeight: '600', marginBottom: 4 },
+  receiveInput: { minHeight: 44, borderWidth: 1, borderColor: '#D9E0DA', borderRadius: 10, paddingHorizontal: 10, color: '#18332F', fontSize: 15 },
   totals: { gap: 5, borderTopWidth: 1, borderTopColor: '#EEF2EE', paddingTop: 10 },
-  history: { color: '#77827A', fontSize: 10, marginTop: 7 },
+  history: { color: '#526864', fontSize: 12, marginTop: 7 },
   actions: { marginTop: 12 },
-  paymentRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 9 },
+  paymentRow: { gap: 8, marginTop: 5 },
   paymentBox: { borderTopWidth: 1, borderTopColor: '#EEF2EE', paddingTop: 7, marginTop: 10 },
-  paymentInput: { flex: 1, minWidth: 0, marginBottom: 0 },
+  paymentInput: { width: '100%', marginBottom: 0 },
   cancel: { alignSelf: 'flex-start', marginTop: 12 },
-  cancelText: { color: '#B63838', fontSize: 11, fontWeight: '700' },
-  editText: { color: '#078343', fontSize: 11, fontWeight: '700' },
+  cancelText: { color: '#A43D32', fontSize: 11, fontWeight: '700' },
+  editText: { color: '#11645D', fontSize: 11, fontWeight: '700' },
 });

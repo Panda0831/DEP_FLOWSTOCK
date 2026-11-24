@@ -1,71 +1,35 @@
-import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { useAppTheme } from '@/hooks/use-app-theme';
+
+/** Static brand mark: the name never changes and nothing loops in the background. */
 export function BrandLockup({ variant = 'compact', tagline = false }: { variant?: 'compact' | 'hero'; tagline?: boolean }) {
-  const motion = useRef(new Animated.Value(0)).current;
-  const nameMotion = useRef(new Animated.Value(1)).current;
-  const [alternateName, setAlternateName] = useState(false);
-  useEffect(() => {
-    const animation = Animated.loop(Animated.sequence([
-      Animated.timing(motion, { toValue: 1, duration: 1150, useNativeDriver: true }),
-      Animated.timing(motion, { toValue: 0, duration: 1150, useNativeDriver: true }),
-    ]));
-    animation.start();
-    return () => animation.stop();
-  }, [motion]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      Animated.timing(nameMotion, { toValue: 0, duration: 180, useNativeDriver: true }).start(({ finished }) => {
-        if (!finished) return;
-        setAlternateName((current) => !current);
-        nameMotion.setValue(0);
-        Animated.spring(nameMotion, { toValue: 1, speed: 18, bounciness: 5, useNativeDriver: true }).start();
-      });
-    }, 3000);
-    return () => {
-      clearInterval(interval);
-      nameMotion.stopAnimation();
-    };
-  }, [nameMotion]);
-
-  const scale = motion.interpolate({ inputRange: [0, 1], outputRange: [1, 1.055] });
-  const waveShift = motion.interpolate({ inputRange: [0, 1], outputRange: [-3, 4] });
+  const t = useAppTheme();
   const hero = variant === 'hero';
-  const name = alternateName ? 'FlowStock' : 'StockFlow';
-  const nameShift = nameMotion.interpolate({ inputRange: [0, 1], outputRange: [5, 0] });
 
   return (
-    <View style={hero ? styles.hero : styles.compact} accessibilityLabel={name} accessibilityRole="text">
-      <View style={hero ? styles.heroHalo : styles.compactHalo}>
-        <Animated.View style={[hero ? styles.heroMark : styles.compactMark, { transform: [{ scale }] }]}>
-          <Text style={hero ? styles.heroLetter : styles.compactLetter}>S</Text>
-          <Animated.View style={[hero ? styles.heroWave : styles.compactWave, { transform: [{ translateX: waveShift }, { rotate: '-19deg' }] }]} />
-        </Animated.View>
+    <View style={hero ? styles.hero : styles.compact} accessibilityRole="text" accessibilityLabel="FlowStock">
+      <View style={[hero ? styles.heroMark : styles.compactMark, { backgroundColor: t.tint }]}>
+        <Text style={[hero ? styles.heroLetter : styles.compactLetter, { color: t.onTint }]}>S</Text>
       </View>
       <View style={hero ? styles.heroCopy : styles.compactCopy}>
-        <Animated.Text style={[hero ? styles.heroName : styles.compactName, { opacity: nameMotion, transform: [{ translateY: nameShift }] }]}>{name}</Animated.Text>
-        {tagline && <Text style={hero ? styles.heroTagline : styles.compactTagline}>Gérez votre activité en toute simplicité</Text>}
+        <Text style={[hero ? styles.heroName : styles.compactName, { color: t.text }]}>FlowStock</Text>
+        {tagline && <Text style={[styles.tagline, { color: t.secondaryText }]}>Gérez votre activité en toute simplicité</Text>}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  compact: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  compactHalo: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#E7F5EC', alignItems: 'center', justifyContent: 'center' },
-  compactMark: { width: 42, height: 42, borderRadius: 22, backgroundColor: '#078343', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  compactLetter: { color: '#FFFFFF', fontSize: 33, lineHeight: 40, fontWeight: '800', marginTop: -2 },
-  compactWave: { position: 'absolute', width: 49, height: 12, borderTopWidth: 3, borderColor: '#A8E8BF', borderRadius: 20, top: 20, left: -3 },
+  compact: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  compactMark: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  compactLetter: { fontSize: 26, fontWeight: '700', lineHeight: 31 },
   compactCopy: { gap: 2 },
-  compactName: { color: '#173D2B', fontSize: 25, fontWeight: '800', letterSpacing: -0.7 },
-  compactTagline: { color: '#65736A', fontSize: 11 },
+  compactName: { fontSize: 22, lineHeight: 27, fontWeight: '700', letterSpacing: -0.4 },
   hero: { alignItems: 'center', gap: 12 },
-  heroHalo: { width: 76, height: 76, borderRadius: 38, backgroundColor: '#E7F5EC', alignItems: 'center', justifyContent: 'center' },
-  heroMark: { width: 66, height: 66, borderRadius: 33, backgroundColor: '#078343', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  heroLetter: { color: '#FFFFFF', fontSize: 49, lineHeight: 58, fontWeight: '800', marginTop: -3 },
-  heroWave: { position: 'absolute', width: 76, height: 17, borderTopWidth: 5, borderColor: '#A8E8BF', borderRadius: 20, top: 31, left: -5 },
+  heroMark: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  heroLetter: { fontSize: 38, fontWeight: '700', lineHeight: 45 },
   heroCopy: { alignItems: 'center', gap: 4 },
-  heroName: { color: '#173D2B', fontSize: 36, fontWeight: '800', letterSpacing: -1.2 },
-  heroTagline: { color: '#65736A', fontSize: 15, textAlign: 'center' },
+  heroName: { fontSize: 32, lineHeight: 38, fontWeight: '700', letterSpacing: -0.6 },
+  tagline: { fontSize: 13, lineHeight: 18, textAlign: 'center' },
 });

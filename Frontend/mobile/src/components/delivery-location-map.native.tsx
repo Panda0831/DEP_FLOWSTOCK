@@ -110,7 +110,7 @@ export function DeliveryLocationMap({ points }: { points: DeliveryMapPoint[] }) 
       <View style={styles.locationPin}><Text style={styles.locationPinText}>⌖</Text></View>
       <View style={styles.locationCopy}>
         <Text style={styles.locationTitle}>{selected.title}</Text>
-        {lookingUp ? <View style={styles.lookupRow}><ActivityIndicator size="small" color="#078343" /><Text style={styles.locationAddress}>Recherche de l’adresse…</Text></View> :
+        {lookingUp ? <View style={styles.lookupRow}><ActivityIndicator size="small" color="#11645D" /><Text style={styles.locationAddress}>Recherche de l’adresse…</Text></View> :
           <Text style={styles.locationAddress}>{selected.address || `${selected.coordinates.latitude.toFixed(5)}, ${selected.coordinates.longitude.toFixed(5)}`}</Text>}
         {!!selected.detail && !lookingUp && <Text style={styles.locationMeta}>{selected.detail}</Text>}
       </View>
@@ -158,24 +158,24 @@ function PlatformView({ mapType, initialCenter, markers, annotations, reverseGeo
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#FFFFFF', borderRadius: 18, padding: 15, borderWidth: 1, borderColor: '#DDE9DF', marginBottom: 18, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 7, elevation: 1 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 18, padding: 15, borderWidth: 1, borderColor: '#DCE7E2', marginBottom: 18, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 7, elevation: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 },
   headingCopy: { flex: 1 },
-  title: { color: '#173D2B', fontSize: 14, fontWeight: '800' },
-  caption: { color: '#77827A', fontSize: 10, marginTop: 3 },
+  title: { color: '#18332F', fontSize: 14, fontWeight: '800' },
+  caption: { color: '#526864', fontSize: 10, marginTop: 3 },
   mapModes: { flexDirection: 'row', padding: 3, borderRadius: 11, backgroundColor: '#F0F4F1' },
   modeButton: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8 },
-  modeActive: { backgroundColor: '#078343' },
+  modeActive: { backgroundColor: '#11645D' },
   modeText: { color: '#65736A', fontSize: 10, fontWeight: '700' },
   modeTextActive: { color: '#FFFFFF' },
-  map: { height: 240, width: '100%', overflow: 'hidden', borderRadius: 14, backgroundColor: '#E7F5EC' },
-  locationDetails: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, padding: 11, borderRadius: 13, backgroundColor: '#F0F8F2', borderWidth: 1, borderColor: '#DDE9DF' },
+  map: { height: 240, width: '100%', overflow: 'hidden', borderRadius: 14, backgroundColor: '#E5F2EF' },
+  locationDetails: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, padding: 11, borderRadius: 13, backgroundColor: '#E5F2EF', borderWidth: 1, borderColor: '#DCE7E2' },
   locationPin: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 11, backgroundColor: '#E1F2E6' },
-  locationPinText: { color: '#078343', fontSize: 20, fontWeight: '800' },
+  locationPinText: { color: '#11645D', fontSize: 20, fontWeight: '800' },
   locationCopy: { flex: 1 },
   lookupRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 },
-  locationTitle: { color: '#173D2B', fontSize: 11, fontWeight: '800' },
+  locationTitle: { color: '#18332F', fontSize: 11, fontWeight: '800' },
   locationAddress: { color: '#526259', fontSize: 11, marginTop: 4 },
-  locationMeta: { color: '#77827A', fontSize: 10, marginTop: 3 },
-  hint: { color: '#77827A', fontSize: 11, lineHeight: 16, marginTop: 10 },
+  locationMeta: { color: '#526864', fontSize: 10, marginTop: 3 },
+  hint: { color: '#526864', fontSize: 11, lineHeight: 16, marginTop: 10 },
 });

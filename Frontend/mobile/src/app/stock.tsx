@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { api, type Movement, type Page, type Produit, type Stock } from '@/lib/session-api';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { api, fetchAll, type Movement, type Produit, type Stock } from '@/lib/session-api';
 import { useAuth } from '@/lib/auth-context';
 import { Action, uiStyles as ui } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
-import { FadeIn, MotionPressable } from '@/components/motion';
+import { FadeIn } from '@/components/motion';
+import { LIST_PAGE_SIZE, ShowMore } from '@/components/show-more';
+import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
+
+const MOVEMENTS_PER_PAGE = 15;
+type MovementFilter = 'all' | 'entries' | 'losses';
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -12,29 +18,36 @@ function formatDate(value: string) {
 }
 
 export default function StockScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ product?: string; success?: string }>();
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
   const { user } = useAuth();
   const admin = user?.role === 'ADMIN' || user?.is_staff;
   const [items, setItems] = useState<Stock[]>([]);
+  const [stockLimit, setStockLimit] = useState(LIST_PAGE_SIZE);
   const [moves, setMoves] = useState<Movement[]>([]);
+  const [movePage, setMovePage] = useState(1);
+  const [movementQuery, setMovementQuery] = useState('');
+  const [movementFilter, setMovementFilter] = useState<MovementFilter>('all');
   const [products, setProducts] = useState<Produit[]>([]);
-  const [product, setProduct] = useState('');
-  const [quantity, setQuantity] = useState('1');
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [stock, movementResult, productResult] = await Promise.all([
+      const [stock, movementList, productList] = await Promise.all([
         api.get<Stock[]>('/stock/'),
-        api.get<Page<Movement> | Movement[]>('/movements/'),
-        api.get<Page<Produit> | Produit[]>('/products/'),
+        fetchAll<Movement>('/movements/'),
+        fetchAll<Produit>('/products/'),
       ]);
       setItems(stock);
-      setMoves(Array.isArray(movementResult) ? movementResult : movementResult.results);
-      setProducts(Array.isArray(productResult) ? productResult : productResult.results);
+      setMoves(movementList);
+      setProducts(productList);
+      setStockLimit(LIST_PAGE_SIZE);
+      setMovePage(1);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Chargement impossible.');
     } finally {
@@ -46,28 +59,31 @@ export default function StockScreen() {
 
   const lowStockItems = useMemo(() => items.filter((item) => item.stock <= item.seuilAlerte), [items]);
   const totalUnits = useMemo(() => items.reduce((sum, item) => sum + item.stock, 0), [items]);
-
-  const adjust = async (kind: 'entries' | 'losses') => {
-    const amount = Number(quantity);
-    if (!product || !Number.isInteger(amount) || amount < 1) {
-      setError('Sélectionnez un produit et saisissez une quantité entière supérieure à zéro.');
-      return;
-    }
-    setBusy(true);
-    setError('');
-    try {
-      await api.post(`/movements/${kind}/`, { product, quantity: amount });
-      setQuantity('1');
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Mouvement refusé.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
+  const orderedItems = useMemo(() => {
+    if (typeof params.product !== 'string') return items;
+    return [...items].sort((a, b) => Number(b.public_id === params.product) - Number(a.public_id === params.product));
+  }, [items, params.product]);
+  const focusedProduct = items.find((item) => item.public_id === params.product);
+  const filteredMoves = useMemo(() => {
+    const needle = movementQuery.trim().toLocaleLowerCase('fr-FR');
+    return moves.filter((move) => {
+      const isEntry = move.typeMouvement === 'entree';
+      if (movementFilter === 'entries' && !isEntry) return false;
+      if (movementFilter === 'losses' && isEntry) return false;
+      if (!needle) return true;
+      const productName = products.find((item) => item.public_id === move.produit)?.nomProduit || '';
+      const haystack = [productName, move.motif, move.referenceOperation, formatDate(move.date), String(move.quantite), isEntry ? 'entrée entree' : 'perte sortie'].join(' ').toLocaleLowerCase('fr-FR');
+      return haystack.includes(needle);
+    });
+  }, [moves, movementFilter, movementQuery, products]);
+  const movePageCount = Math.max(1, Math.ceil(filteredMoves.length / MOVEMENTS_PER_PAGE));
+  const currentMovePage = Math.min(movePage, movePageCount);
+  const visibleMoves = filteredMoves.slice((currentMovePage - 1) * MOVEMENTS_PER_PAGE, currentMovePage * MOVEMENTS_PER_PAGE);
+  return <ScrollView style={[ui.page, { backgroundColor: t.background }]} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
     <AppPageHeading title="Stock" subtitle="Niveaux disponibles, alertes et journal des mouvements" />
+    {params.success && <View style={[styles.notice, params.success === 'loss' && styles.lossNotice]} accessibilityRole="summary">
+      <Text style={styles.noticeText}>{params.success === 'loss' ? 'Perte enregistrée.' : 'Entrée de stock enregistrée.'}{focusedProduct ? ` ${focusedProduct.nomProduit} : ${focusedProduct.stock} unité(s) disponible(s).` : ''}</Text>
+    </View>}
 
     <FadeIn delay={100}>
       <View style={styles.summaryGrid}>
@@ -89,32 +105,15 @@ export default function StockScreen() {
       </View>
     </FadeIn>
 
-    {admin && <FadeIn delay={130}>
-      <View style={ui.card}>
-        <Text style={ui.cardTitle}>Enregistrer un mouvement</Text>
-        <Text style={styles.label}>Choisir un produit</Text>
-        {products.length === 0 ? <Text style={styles.helper}>Aucun produit disponible.</Text> : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.productChoices}>
-          {products.map((item) => <MotionPressable key={item.public_id} onPress={() => setProduct(item.public_id)} style={[styles.productChoice, product === item.public_id && styles.productSelected]}>
-            <Text style={[styles.productText, product === item.public_id && styles.productTextSelected]}>{item.nomProduit}</Text>
-          </MotionPressable>)}
-        </ScrollView>}
-        <TextInput value={quantity} onChangeText={setQuantity} keyboardType="number-pad" placeholder="Quantité" placeholderTextColor="#89919E" style={ui.input} />
-        <View style={styles.actions}>
-          <Action label={busy ? 'Enregistrement…' : 'Entrée de stock'} onPress={() => void adjust('entries')} disabled={busy || !products.length} />
-          <MotionPressable style={[styles.lossButton, busy && styles.disabled]} onPress={() => void adjust('losses')} disabled={busy || !products.length}>
-            <Text style={styles.lossText}>Enregistrer une perte</Text>
-          </MotionPressable>
-        </View>
-      </View>
-    </FadeIn>}
+    {admin && <View style={styles.createRow}><Action label="Nouveau mouvement" onPress={() => router.push('/stock/new')} /></View>}
 
-    {!!error && <Text accessibilityRole="alert" style={ui.error}>{error}</Text>}
+    {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
 
     <View style={styles.sectionHeading}>
-      <View><Text style={ui.section}>État du stock</Text><Text style={styles.sectionHint}>Les références sous le seuil sont signalées en rouge.</Text></View>
-      <Pressable onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Actualiser le stock"><Text style={ui.refresh}>Actualiser</Text></Pressable>
+      <View><Text style={styles.sectionTitle}>État du stock</Text><Text style={styles.sectionHint}>Les références sous le seuil sont signalées avec une alerte.</Text></View>
+      <Pressable onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Actualiser le stock"><Text style={styles.refresh}>Actualiser</Text></Pressable>
     </View>
-    {loading ? <ActivityIndicator color="#078343" style={styles.loader} /> : items.length === 0 ? <Text style={ui.empty}>Aucun niveau de stock à afficher.</Text> : items.map((item, index) => {
+    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : items.length === 0 ? <Text style={styles.empty}>Aucun niveau de stock à afficher.</Text> : orderedItems.slice(0, stockLimit).map((item, index) => {
       const isLow = item.stock <= item.seuilAlerte;
       return <FadeIn key={item.public_id} delay={Math.min(index * 35, 280)}>
         <View style={styles.stockRow}>
@@ -129,12 +128,35 @@ export default function StockScreen() {
         </View>
       </FadeIn>;
     })}
+    {!loading && <ShowMore remaining={items.length - stockLimit} onPress={() => setStockLimit((current) => current + LIST_PAGE_SIZE)} />}
 
     <View style={[styles.sectionHeading, styles.historyHeading]}>
-      <View><Text style={ui.section}>Historique récent</Text><Text style={styles.sectionHint}>Les derniers mouvements de stock enregistrés.</Text></View>
-      <Pressable onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Actualiser l’historique"><Text style={ui.refresh}>Actualiser</Text></Pressable>
+      <View><Text style={styles.sectionTitle}>Historique récent</Text><Text style={styles.sectionHint}>Les derniers mouvements de stock enregistrés.</Text></View>
+      <Pressable onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Actualiser l’historique"><Text style={styles.refresh}>Actualiser</Text></Pressable>
     </View>
-    {loading ? <ActivityIndicator color="#078343" style={styles.loader} /> : moves.length === 0 ? <Text style={ui.empty}>Aucun mouvement enregistré.</Text> : moves.slice(0, 30).map((move) => {
+    <TextInput
+      value={movementQuery}
+      onChangeText={(value) => { setMovementQuery(value); setMovePage(1); }}
+      placeholder="Rechercher un produit, une date…"
+      placeholderTextColor={t.secondaryText}
+      style={styles.searchInput}
+      accessibilityLabel="Rechercher dans l’historique des mouvements"
+      returnKeyType="search"
+      clearButtonMode="while-editing"
+    />
+    <View style={styles.filterRow}>
+      {([
+        ['all', 'Tous'], ['entries', 'Entrées'], ['losses', 'Pertes'],
+      ] as const).map(([value, label]) => <Pressable
+        key={value}
+        onPress={() => { setMovementFilter(value); setMovePage(1); }}
+        style={[styles.filterButton, movementFilter === value && styles.filterButtonActive]}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: movementFilter === value }}>
+        <Text style={[styles.filterText, movementFilter === value && styles.filterTextActive]}>{label}</Text>
+      </Pressable>)}
+    </View>
+    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : moves.length === 0 ? <Text style={styles.empty}>Aucun mouvement enregistré.</Text> : filteredMoves.length === 0 ? <Text style={styles.empty}>Aucun mouvement ne correspond à ces critères.</Text> : visibleMoves.map((move) => {
       const isEntry = move.typeMouvement === 'entree';
       const productName = products.find((item) => item.public_id === move.produit)?.nomProduit || `Produit ${move.produit.slice(0, 8)}`;
       return <View key={move.public_id} style={styles.movementRow}>
@@ -149,52 +171,69 @@ export default function StockScreen() {
         </View>
       </View>;
     })}
+    {!loading && filteredMoves.length > 0 && <View style={styles.pagination}>
+      <Pressable onPress={() => setMovePage((page) => Math.max(1, page - 1))} disabled={currentMovePage <= 1} style={[styles.pageButton, currentMovePage <= 1 && styles.pageButtonDisabled]} accessibilityRole="button" accessibilityLabel="Page précédente">
+        <Text style={styles.pageButtonText}>‹ Précédent</Text>
+      </Pressable>
+      <Text style={styles.pageIndicator}>Page {currentMovePage} sur {movePageCount}</Text>
+      <Pressable onPress={() => setMovePage((page) => Math.min(movePageCount, page + 1))} disabled={currentMovePage >= movePageCount} style={[styles.pageButton, currentMovePage >= movePageCount && styles.pageButtonDisabled]} accessibilityRole="button" accessibilityLabel="Page suivante">
+        <Text style={styles.pageButtonText}>Suivant ›</Text>
+      </Pressable>
+    </View>}
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 22 },
-  summaryCard: { flexGrow: 1, flexBasis: 145, minHeight: 108, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5EBE6', borderRadius: 16, padding: 15 },
-  alertSummaryCard: { borderColor: '#F0CACA', backgroundColor: '#FFFAFA' },
-  summaryLabel: { color: '#718077', fontSize: 11, fontWeight: '700' },
-  summaryValue: { color: '#173D2B', fontSize: 24, fontWeight: '800', marginTop: 8 },
-  alertValue: { color: '#B63838' },
-  summaryHint: { color: '#89928C', fontSize: 10, marginTop: 3 },
-  label: { fontSize: 13, color: '#68736B', marginBottom: 8 },
-  productChoices: { gap: 7, paddingBottom: 10 },
-  productChoice: { backgroundColor: '#F0F4F1', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10 },
-  productSelected: { backgroundColor: '#078343' },
-  productText: { color: '#38443B', fontSize: 12, fontWeight: '700' },
-  productTextSelected: { color: '#FFFFFF' },
-  helper: { color: '#818A83', fontSize: 12, marginBottom: 12 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
-  lossButton: { borderColor: '#DDAAAA', borderWidth: 1, borderRadius: 12, justifyContent: 'center', paddingHorizontal: 13, minHeight: 44 },
-  lossText: { color: '#A63838', fontWeight: '700', fontSize: 12 },
-  disabled: { opacity: 0.55 },
+  summaryCard: { flexGrow: 1, flexBasis: 145, minHeight: 108, backgroundColor: t.surface, borderWidth: 1, borderColor: t.separator, borderRadius: 16, padding: 15 },
+  alertSummaryCard: { borderColor: t.warningSurface, backgroundColor: t.warningSurface },
+  summaryLabel: { color: t.secondaryText, fontSize: 12, fontWeight: '600' },
+  summaryValue: { color: t.text, fontSize: 24, fontWeight: '700', marginTop: 8 },
+  alertValue: { color: t.warning },
+  summaryHint: { color: t.secondaryText, fontSize: 13, marginTop: 3 },
+  createRow: { marginBottom: 18 },
+  notice: { padding: 14, borderRadius: 12, backgroundColor: t.tintSurface, marginBottom: 16 },
+  lossNotice: { backgroundColor: t.dangerSurface },
+  noticeText: { color: t.text, fontSize: 14, lineHeight: 20, fontWeight: '600' },
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 },
-  sectionHint: { color: '#818A83', fontSize: 11, marginTop: 3 },
+  sectionTitle: { color: t.text, fontSize: 17, lineHeight: 22, fontWeight: '600' },
+  sectionHint: { color: t.secondaryText, fontSize: 13, marginTop: 3 },
+  empty: { color: t.secondaryText, fontSize: 15, textAlign: 'center', marginVertical: 32 },
+  error: { color: t.danger, fontSize: 14, lineHeight: 20, marginBottom: 12 },
+  refresh: { color: t.tint, fontSize: 14, fontWeight: '600', minHeight: 44, textAlignVertical: 'center' },
   loader: { marginVertical: 24 },
-  stockRow: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 15, marginBottom: 8, flexDirection: 'row', alignItems: 'center', borderColor: '#DDE9DF', borderWidth: 1, gap: 10, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 },
+  stockRow: { backgroundColor: t.surface, borderRadius: 14, padding: 15, marginBottom: 8, flexDirection: 'row', alignItems: 'center', borderColor: t.separator, borderWidth: 1, gap: 10 },
   stockInfo: { flex: 1 },
-  productName: { color: '#173D2B', fontWeight: '700', fontSize: 14 },
-  threshold: { color: '#818A83', fontSize: 11, marginTop: 4 },
+  productName: { color: t.text, fontWeight: '600', fontSize: 15 },
+  threshold: { color: t.secondaryText, fontSize: 13, marginTop: 4 },
   stockValueWrap: { alignItems: 'flex-end', minWidth: 94 },
-  stockValue: { color: '#078343', fontWeight: '800', fontSize: 22 },
-  lowValue: { color: '#B63838' },
-  stockStatus: { color: '#078343', fontWeight: '700', fontSize: 9, marginTop: 1 },
-  lowStatus: { color: '#B63838' },
+  stockValue: { color: t.tint, fontWeight: '700', fontSize: 22 },
+  lowValue: { color: t.danger },
+  stockStatus: { color: t.tint, fontWeight: '600', fontSize: 13, marginTop: 1 },
+  lowStatus: { color: t.danger },
   historyHeading: { marginTop: 20 },
-  movementRow: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 13, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 11, borderColor: '#DDE9DF', borderWidth: 1, shadowColor: '#38704A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 },
+  searchInput: { minHeight: 48, borderWidth: 1, borderColor: t.separator, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, color: t.text, backgroundColor: t.surface, marginBottom: 8 },
+  filterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  filterButton: { minHeight: 40, minWidth: 74, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 13, borderWidth: 1, borderColor: t.separator, borderRadius: 20, backgroundColor: t.surface },
+  filterButtonActive: { borderColor: t.tint, backgroundColor: t.tintSurface },
+  filterText: { color: t.secondaryText, fontSize: 13, fontWeight: '600' },
+  filterTextActive: { color: t.tint },
+  pagination: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4, marginBottom: 16 },
+  pageButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: t.separator, borderRadius: 11, backgroundColor: t.surface },
+  pageButtonDisabled: { opacity: 0.45 },
+  pageButtonText: { color: t.tint, fontSize: 13, fontWeight: '600' },
+  pageIndicator: { color: t.secondaryText, fontSize: 13, fontWeight: '600' },
+  movementRow: { backgroundColor: t.surface, borderRadius: 14, padding: 13, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 11, borderColor: t.separator, borderWidth: 1 },
   movementIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  entryIcon: { backgroundColor: '#E7F5EC' },
-  lossIcon: { backgroundColor: '#FCEEEE' },
+  entryIcon: { backgroundColor: t.tintSurface },
+  lossIcon: { backgroundColor: t.dangerSurface },
   movementSign: { fontSize: 20, fontWeight: '700' },
-  entrySign: { color: '#078343' },
-  lossSign: { color: '#B63838' },
+  entrySign: { color: t.tint },
+  lossSign: { color: t.danger },
   movementInfo: { flex: 1 },
-  movementName: { color: '#173D2B', fontSize: 13, fontWeight: '700' },
-  movementDate: { color: '#818A83', fontSize: 10, marginTop: 4 },
+  movementName: { color: t.text, fontSize: 15, fontWeight: '600' },
+  movementDate: { color: t.secondaryText, fontSize: 13, marginTop: 4 },
   movementAmountWrap: { alignItems: 'flex-end' },
-  movementAmount: { color: '#078343', fontWeight: '800', fontSize: 15 },
-  movementKind: { color: '#818A83', fontSize: 10, marginTop: 2 },
+  movementAmount: { color: t.tint, fontWeight: '700', fontSize: 15 },
+  movementKind: { color: t.secondaryText, fontSize: 13, marginTop: 2 },
 });
