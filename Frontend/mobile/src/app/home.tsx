@@ -8,8 +8,11 @@ import { useAuth } from '@/lib/auth-context';
 import { api, type Stock } from '@/lib/session-api';
 import { AppPageHeading } from '@/components/page-heading';
 import { MotionPressable } from '@/components/motion';
+import { ProfitTrendChart, type ProfitTrendPoint } from '@/components/profit-trend-chart';
 import { HitSize, Radius, Type } from '@/constants/theme';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
+
+type MonthlyProfitReport = { mois: string; benefice_net: string };
 
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   page: { flex: 1, backgroundColor: t.background },
@@ -57,6 +60,8 @@ export default function HomeScreen() {
   const { user, isReady } = useAuth();
   const [items, setItems] = useState<Stock[]>([]);
   const [alerts, setAlerts] = useState<Stock[]>([]);
+  const [profitTrend, setProfitTrend] = useState<ProfitTrendPoint[]>([]);
+  const [profitError, setProfitError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -86,6 +91,37 @@ export default function HomeScreen() {
 
   useEffect(() => { if (isReady && user) void refresh(); }, [isReady, refresh, user]);
 
+  const refreshProfitTrend = useCallback(async () => {
+    if (!isAdmin) return;
+    setProfitError('');
+    try {
+      const today = new Date();
+      const firstMonth = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      const formatDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const reports = await api.get<MonthlyProfitReport[]>('/reports/monthly/', {
+        start_date: formatDate(firstMonth),
+        end_date: formatDate(lastDay),
+      });
+      const byMonth = new Map(reports.map((report) => [report.mois.slice(0, 7), Number(report.benefice_net)]));
+      setProfitTrend(Array.from({ length: 6 }, (_, index) => {
+        const month = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1);
+        const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+        return { month: key, value: byMonth.get(key) ?? 0 };
+      }));
+    } catch (e) {
+      setProfitError(e instanceof Error ? e.message : 'L’évolution du bénéfice est indisponible.');
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (isReady && user && isAdmin) void refreshProfitTrend();
+  }, [isAdmin, isReady, refreshProfitTrend, user]);
+
+  const refreshDashboard = useCallback(async () => {
+    await Promise.all([refresh(), refreshProfitTrend()]);
+  }, [refresh, refreshProfitTrend]);
+
   if (!isReady || !user) return <SafeAreaView style={styles.page}><ActivityIndicator color={t.tint} style={styles.loader} /></SafeAreaView>;
 
   const totalUnits = items.reduce((sum, item) => sum + Number(item.stock || 0), 0);
@@ -94,7 +130,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.page} edges={['top']}>
       <StatusBar />
-      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={t.tint} />}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refreshDashboard()} tintColor={t.tint} />}>
         <View style={styles.headingRow}>
           <View style={styles.heading}>
             <AppPageHeading title="Vue d’ensemble" />
@@ -123,6 +159,10 @@ export default function HomeScreen() {
               <Text style={styles.statHint}>Seuil atteint ou dépassé</Text>
             </View>
           </View>
+
+          {isAdmin && (profitError
+            ? <Text accessibilityRole="alert" style={styles.error}>{profitError}</Text>
+            : profitTrend.length > 0 && <ProfitTrendChart points={profitTrend} />)}
 
           <Text style={styles.sectionTitle}>Actions courantes</Text>
           <View style={styles.actionGrid}>
