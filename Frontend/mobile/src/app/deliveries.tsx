@@ -149,7 +149,7 @@ export default function DeliveriesScreen() {
     return points;
   }, [clients, items, orders, products]);
 
-  return <ScrollView style={ui.page} contentContainerStyle={ui.content}>
+  return <ScrollView style={ui.page} contentContainerStyle={ui.content} showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Livraisons" subtitle="Suivez les expéditions et mettez leur statut à jour." />
     {!detailMode && <View style={styles.createRow}><Action label="Nouvelle livraison" onPress={() => router.push('/deliveries/new')} /></View>}
     {!!error && <Text style={ui.error}>{error}</Text>}

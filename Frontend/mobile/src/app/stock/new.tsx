@@ -67,11 +67,11 @@ export default function NewStockMovementScreen() {
     }
   };
 
-  if (!admin) return <ScrollView style={ui.page} contentContainerStyle={ui.content}><AppPageHeading title="Mouvement de stock" subtitle="Cette section est réservée aux administrateurs." /></ScrollView>;
+  if (!admin) return <ScrollView style={ui.page} contentContainerStyle={ui.content} showsVerticalScrollIndicator={false}><AppPageHeading title="Mouvement de stock" subtitle="Cette section est réservée aux administrateurs." /></ScrollView>;
 
   const valid = !!product && Number.isInteger(Number(quantity)) && Number(quantity) > 0;
 
-  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
+  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Mouvement de stock" subtitle="Choisissez un produit, puis enregistrez une entrée ou une perte." />
     {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : !products.length ? <View style={ui.card}>
       <Text style={styles.formTitle}>Ajoutez d’abord un produit</Text>

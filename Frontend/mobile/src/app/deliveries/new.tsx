@@ -76,7 +76,7 @@ export default function NewDeliveryScreen() {
     }
   };
 
-  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
+  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Nouvelle livraison" subtitle="Choisissez une commande confirmée, vérifiez le client puis créez le suivi." />
     {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : <View style={ui.card}>
       {availableOrders.length

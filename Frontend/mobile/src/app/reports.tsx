@@ -220,7 +220,7 @@ export default function ReportsScreen() {
   const sortedProducts = [...products].sort((a, b) => Number(b.chiffre_affaires) - Number(a.chiffre_affaires));
   const maxProductSales = Math.max(...products.map((row) => Number(row.chiffre_affaires)), 1);
 
-  return <ScrollView style={[ui.page, { backgroundColor: t.background }]} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
+  return <ScrollView style={[ui.page, { backgroundColor: t.background }]} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Rapports" subtitle="Voyez ce que les ventes rapportent et ce qui réduit le résultat." />
     {!admin ? <Text style={styles.error}>Les rapports financiers sont réservés aux administrateurs.</Text> : <>
       <FadeIn delay={130}><View style={styles.periodCard}>

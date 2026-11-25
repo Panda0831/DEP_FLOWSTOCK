@@ -263,9 +263,9 @@ export default function PurchasesScreen() {
       ? [...filteredPurchases].sort((a, b) => Number(b.public_id === focusedId) - Number(a.public_id === focusedId))
       : filteredPurchases).slice((purchasePage - 1) * LIST_PAGE_SIZE, purchasePage * LIST_PAGE_SIZE);
 
-  if (!isAdmin) return <ScrollView style={ui.page} contentContainerStyle={ui.content}><AppPageHeading title="Achats" subtitle="Cette section est réservée aux administrateurs." /></ScrollView>;
+  if (!isAdmin) return <ScrollView style={ui.page} contentContainerStyle={ui.content} showsVerticalScrollIndicator={false}><AppPageHeading title="Achats" subtitle="Cette section est réservée aux administrateurs." /></ScrollView>;
 
-  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
+  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Achats" subtitle="Commandez auprès de vos fournisseurs et réceptionnez les produits en plusieurs fois." />
     {!detailMode && <FormDisclosure label={editingPurchase ? `Modifier ${editingPurchase.reference}` : 'Nouvel achat'} openWhen={autoOpen ? '1' : (editingPurchase?.public_id ?? null)}>
       <View style={ui.card}>

@@ -236,7 +236,7 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
   );
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={uiStyles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.page} contentContainerStyle={uiStyles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <AppPageHeading title={title} subtitle={subtitle} />
       {!!focusId && <MotionPressable onPress={() => router.back()} style={{ minHeight: HitSize, justifyContent: 'center', alignSelf: 'flex-start' }} accessibilityRole="button"><Text style={styles.actionText}>‹ Retour</Text></MotionPressable>}
       {summary}
@@ -295,7 +295,7 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
         animationType="slide"
         presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'overFullScreen'}
         onRequestClose={closeForm}>
-        <ScrollView style={styles.sheet} keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.sheet} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{editing ? `Modifier ${title.toLowerCase()}` : `Nouveau · ${title.toLowerCase()}`}</Text>
             <MotionPressable onPress={closeForm} style={styles.close} accessibilityRole="button" accessibilityLabel="Annuler et fermer"><Text style={styles.closeText}>Annuler</Text></MotionPressable>

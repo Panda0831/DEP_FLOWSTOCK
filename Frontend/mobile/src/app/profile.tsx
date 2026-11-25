@@ -74,7 +74,7 @@ export default function ProfileScreen() {
     }
   };
 
-  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
+  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Mon compte" subtitle="Gérez vos informations personnelles et votre sécurité." />
 
     <FadeIn delay={100}>

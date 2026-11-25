@@ -121,7 +121,7 @@ export default function OrdersScreen() {
     finally { setBusy(false); }
   };
 
-  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
+  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Commandes" subtitle="Enregistrez les ventes, leurs paiements et suivez leur préparation et livraison." />
     {!detailMode && <View style={styles.createRow}><Action label="Nouvelle commande" onPress={() => router.push('/orders/new')} /></View>}
     {!!error && <Text style={ui.error}>{error}</Text>}

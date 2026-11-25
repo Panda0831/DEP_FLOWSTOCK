@@ -86,7 +86,7 @@ export default function NewOrderScreen() {
   const subtotal = lines.reduce((sum, line) => sum + Number(line.quantity) * Number(products.find((item) => item.public_id === line.product)?.prixVente || 0), 0);
   const total = Math.max(0, subtotal - Number(discount || 0)) + Number(deliveryFee || 0);
 
-  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
+  return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Nouvelle commande" subtitle="Choisissez un client, puis ajoutez les articles à vendre." />
     {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : <View style={ui.card}>
       <Text style={styles.sectionTitle}>1. Client</Text>

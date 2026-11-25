@@ -198,7 +198,8 @@ export default function HomeScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}>
           <View style={styles.content}>
             <FadeIn><View style={styles.brand}><BrandLockup variant="hero" tagline /></View></FadeIn>
             <BrandDivider />

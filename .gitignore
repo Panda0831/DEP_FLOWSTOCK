@@ -523,5 +523,6 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
+package-lock.json
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
