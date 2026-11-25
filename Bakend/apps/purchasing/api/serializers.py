@@ -5,7 +5,13 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.finance.api.serializers import PaiementSerializer
-from apps.finance.services import montant_paye, montant_restant
+from apps.finance.services import (
+    montant_paye,
+    montant_remboursable,
+    montant_restant,
+    montant_retourne,
+    montant_total_net,
+)
 from apps.inventory.models import Mouvement
 
 from ..models import Achat, HistoriqueAchat, LigneAchat, LigneReceptionAchat, ReceptionAchat
@@ -90,8 +96,11 @@ class AchatSerializer(serializers.ModelSerializer):
     paiements = PaiementSerializer(many=True, read_only=True)
     historique = HistoriqueAchatSerializer(many=True, read_only=True)
     montant_total = serializers.SerializerMethodField()
+    montant_retourne = serializers.SerializerMethodField()
+    montant_net = serializers.SerializerMethodField()
     montant_paye = serializers.SerializerMethodField()
     solde_restant = serializers.SerializerMethodField()
+    montant_remboursable = serializers.SerializerMethodField()
     statut_paiement = serializers.SerializerMethodField()
 
     class Meta:
@@ -110,13 +119,22 @@ class AchatSerializer(serializers.ModelSerializer):
             "paiements",
             "historique",
             "montant_total",
+            "montant_retourne",
+            "montant_net",
             "montant_paye",
             "solde_restant",
+            "montant_remboursable",
             "statut_paiement",
         )
 
     def get_montant_total(self, obj):
         return obj.montant_total
+
+    def get_montant_retourne(self, obj):
+        return montant_retourne(obj)
+
+    def get_montant_net(self, obj):
+        return montant_total_net(obj)
 
     def get_montant_paye(self, obj):
         return montant_paye(obj)
@@ -126,9 +144,16 @@ class AchatSerializer(serializers.ModelSerializer):
 
     def get_statut_paiement(self, obj):
         paye = montant_paye(obj)
+        if montant_remboursable(obj) > 0:
+            return "remboursement_attendu"
+        if montant_restant(obj) == 0:
+            return "paye"
         if paye == 0:
             return "non_paye"
-        return "paye" if paye >= obj.montant_total else "partiellement_paye"
+        return "partiellement_paye"
+
+    def get_montant_remboursable(self, obj):
+        return montant_remboursable(obj)
 
 
 class AchatCreationSerializer(serializers.Serializer):
