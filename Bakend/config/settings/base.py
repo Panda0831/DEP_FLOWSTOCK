@@ -118,6 +118,7 @@ AXES_ENABLED = env.bool("AXES_ENABLED", default=True)
 AXES_FAILURE_LIMIT = env.int("AXES_FAILURE_LIMIT", default=5)
 AXES_COOLOFF_TIME = env.int("AXES_COOLOFF_MINUTES", default=15)
 AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+AXES_LOCKOUT_CALLABLE = "apps.accounts.lockout.login_lockout_response"
 AXES_RESET_ON_SUCCESS = True
 
 PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=3600)
