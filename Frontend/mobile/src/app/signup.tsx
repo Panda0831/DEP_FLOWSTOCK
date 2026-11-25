@@ -32,7 +32,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   card: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: t.surface, borderRadius: 24, padding: 28, borderWidth: 1, borderColor: t.separator, shadowColor: '#38704A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 20, elevation: 3 },
   copyBlock: { marginTop: 12 },
   divider: { marginTop: 20 },
-  eyebrow: { color: t.tint, fontSize: 10, fontWeight: '800', letterSpacing: 1.2, textAlign: 'center' },
+  eyebrow: { color: t.tint, fontSize: 12, lineHeight: 17, fontWeight: '800', letterSpacing: 0.6, textAlign: 'center' },
   title: { color: t.text, fontSize: 27, fontWeight: '800', marginTop: 9, textAlign: 'center' },
   copy: { color: t.secondaryText, fontSize: 14, lineHeight: 22, marginTop: 11, textAlign: 'center' },
   button: { minHeight: 52, borderRadius: 14, backgroundColor: t.tint, justifyContent: 'center', alignItems: 'center', marginTop: 24 },
