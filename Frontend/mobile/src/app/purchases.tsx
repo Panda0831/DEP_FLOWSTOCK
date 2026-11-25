@@ -88,13 +88,15 @@ export default function PurchasesScreen() {
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    const selectedSupplier = typeof params.supplier === 'string'
-      ? suppliers.find((item) => item.public_id === params.supplier)
-      : suppliers.length === 1 ? suppliers[0] : undefined;
-    if (selectedSupplier) setSupplier(selectedSupplier.public_id);
     const selected = typeof params.product === 'string'
       ? products.find((item) => item.public_id === params.product)
       : products.length === 1 ? products[0] : undefined;
+    const selectedSupplier = typeof params.supplier === 'string'
+      ? suppliers.find((item) => item.public_id === params.supplier)
+      : selected?.idFournisseur
+        ? suppliers.find((item) => item.public_id === selected.idFournisseur)
+        : suppliers.length === 1 ? suppliers[0] : undefined;
+    if (selectedSupplier) setSupplier(selectedSupplier.public_id);
     if (selected) {
       setSelectedProduct(selected.public_id);
       setUnitPrice(selected.prixAchat || '0');

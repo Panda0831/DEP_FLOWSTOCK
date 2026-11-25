@@ -46,6 +46,9 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   alertDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: t.warning },
   alertName: { color: t.text, fontSize: 15, fontWeight: '600', flex: 1 },
   alertQty: { color: t.warning, fontSize: 14, fontWeight: '700' },
+  alertCopy: { flex: 1, minWidth: 0 },
+  restockButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 11, borderWidth: 1, borderColor: t.separator, borderRadius: Radius.control, backgroundColor: t.surface },
+  restockButtonText: { color: t.tint, fontSize: 12, fontWeight: '700' },
   empty: { color: t.secondaryText, fontSize: 15, padding: 20 },
   lowerLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   lowerLink: { minHeight: HitSize, justifyContent: 'center', paddingHorizontal: 12 },
@@ -185,8 +188,17 @@ export default function HomeScreen() {
             {alerts.length === 0 ? <Text style={styles.empty}>Tout est en ordre. Aucun produit n’a atteint son seuil d’alerte.</Text> : alerts.slice(0, 5).map((item, index) => (
               <View key={item.public_id} style={[styles.alertRow, index === Math.min(alerts.length, 5) - 1 && { borderBottomWidth: 0 }]}>
                 <View style={styles.alertDot} />
-                <Text style={styles.alertName} numberOfLines={1}>{item.nomProduit}</Text>
-                <Text style={styles.alertQty}>{item.stock} restant(s)</Text>
+                <View style={styles.alertCopy}>
+                  <Text style={styles.alertName} numberOfLines={1}>{item.nomProduit}</Text>
+                  <Text style={styles.alertQty}>{item.stock} restant(s)</Text>
+                </View>
+                {isAdmin && <MotionPressable
+                  onPress={() => router.push({ pathname: '/purchases', params: { add: '1', product: item.public_id } })}
+                  style={styles.restockButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Créer un achat pour réapprovisionner ${item.nomProduit}`}>
+                  <Text style={styles.restockButtonText}>Commander</Text>
+                </MotionPressable>}
               </View>
             ))}
           </View>

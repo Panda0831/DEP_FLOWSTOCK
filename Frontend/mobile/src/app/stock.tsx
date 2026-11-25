@@ -148,6 +148,13 @@ export default function StockScreen() {
             <Text style={[styles.stockValue, isLow && styles.lowValue]}>{item.stock}</Text>
             <Text style={[styles.stockStatus, isLow && styles.lowStatus]}>{isLow ? 'À réapprovisionner' : 'Disponible'}</Text>
           </View>
+          {admin && isLow && <MotionPressable
+            onPress={() => router.push({ pathname: '/purchases', params: { add: '1', product: item.public_id } })}
+            style={styles.restockButton}
+            accessibilityRole="button"
+            accessibilityLabel={`Créer un achat pour réapprovisionner ${item.nomProduit}`}>
+            <Text style={styles.restockButtonText}>Commander</Text>
+          </MotionPressable>}
         </View>
       </FadeIn>;
     })}
@@ -231,6 +238,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   lowValue: { color: t.danger },
   stockStatus: { color: t.tint, fontWeight: '600', fontSize: 13, marginTop: 1 },
   lowStatus: { color: t.danger },
+  restockButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 10, borderWidth: 1, borderColor: t.separator, borderRadius: 12, backgroundColor: t.surface },
+  restockButtonText: { color: t.tint, fontSize: 12, fontWeight: '700' },
   historyHeading: { marginTop: 20 },
   searchInput: { minHeight: 48, borderWidth: 1, borderColor: t.separator, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, color: t.text, backgroundColor: t.surface, marginBottom: 8 },
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },

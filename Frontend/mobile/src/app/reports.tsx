@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -31,6 +31,85 @@ function localDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function dateFromValue(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function displayDate(value: string) {
+  return dateFromValue(value).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+type PeriodPreset = 'this_month' | 'last_month' | 'custom';
+
+function CalendarDatePicker({ value, title, onSelect, onClose }: {
+  value: string;
+  title: string;
+  onSelect: (date: string) => void;
+  onClose: () => void;
+}) {
+  const t = useAppTheme();
+  const styles = useMemo(() => makeStyles(t), [t]);
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const date = dateFromValue(value);
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+  });
+  const year = visibleMonth.getFullYear();
+  const month = visibleMonth.getMonth();
+  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+  const dayCount = new Date(year, month + 1, 0).getDate();
+  const weekdays = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+  return <Modal transparent animationType="fade" visible onRequestClose={onClose}>
+    <View style={styles.calendarBackdrop}>
+      <View style={styles.calendarCard}>
+        <View style={styles.calendarHeading}>
+          <Text style={styles.calendarTitle}>{title}</Text>
+          <MotionPressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Fermer le calendrier">
+            <Text style={styles.calendarClose}>Fermer</Text>
+          </MotionPressable>
+        </View>
+        <View style={styles.calendarMonth}>
+          <MotionPressable
+            onPress={() => setVisibleMonth(new Date(year, month - 1, 1))}
+            style={styles.monthButton}
+            accessibilityRole="button"
+            accessibilityLabel="Mois précédent">
+            <Text style={styles.monthButtonText}>‹</Text>
+          </MotionPressable>
+          <Text style={styles.monthTitle}>{visibleMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</Text>
+          <MotionPressable
+            onPress={() => setVisibleMonth(new Date(year, month + 1, 1))}
+            style={styles.monthButton}
+            accessibilityRole="button"
+            accessibilityLabel="Mois suivant">
+            <Text style={styles.monthButtonText}>›</Text>
+          </MotionPressable>
+        </View>
+        <View style={styles.calendarGrid}>
+          {weekdays.map((day, index) => <Text key={`${day}-${index}`} style={styles.weekday}>{day}</Text>)}
+          {Array.from({ length: 42 }, (_, index) => {
+            const day = index - firstWeekday + 1;
+            if (day < 1 || day > dayCount) return <View key={`empty-${index}`} style={styles.dayCell} />;
+            const date = localDate(new Date(year, month, day));
+            const isSelected = date === value;
+            const isToday = date === localDate(new Date());
+            return <MotionPressable
+              key={date}
+              onPress={() => onSelect(date)}
+              style={[styles.dayCell, isSelected && styles.selectedDay]}
+              accessibilityRole="button"
+              accessibilityLabel={displayDate(date)}
+              accessibilityState={{ selected: isSelected }}>
+              <Text style={[styles.dayText, isToday && styles.todayText, isSelected && styles.selectedDayText]}>{day}</Text>
+            </MotionPressable>;
+          })}
+        </View>
+      </View>
+    </View>
+  </Modal>;
+}
+
 export default function ReportsScreen() {
   const ui = useUiStyles();
   const router = useRouter();
@@ -41,6 +120,8 @@ export default function ReportsScreen() {
   const today = localDate(new Date());
   const [start, setStart] = useState(`${today.slice(0, 7)}-01`);
   const [end, setEnd] = useState(today);
+  const [preset, setPreset] = useState<PeriodPreset>('this_month');
+  const [calendarField, setCalendarField] = useState<'start' | 'end' | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [products, setProducts] = useState<ProductReport[]>([]);
   const [orders, setOrders] = useState<OrderReport[]>([]);
@@ -49,6 +130,30 @@ export default function ReportsScreen() {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
+
+  const choosePreset = (nextPreset: Exclude<PeriodPreset, 'custom'>) => {
+    const now = new Date();
+    if (nextPreset === 'this_month') {
+      setStart(localDate(new Date(now.getFullYear(), now.getMonth(), 1)));
+      setEnd(localDate(now));
+    } else {
+      setStart(localDate(new Date(now.getFullYear(), now.getMonth() - 1, 1)));
+      setEnd(localDate(new Date(now.getFullYear(), now.getMonth(), 0)));
+    }
+    setPreset(nextPreset);
+  };
+
+  const selectDate = (field: 'start' | 'end', value: string) => {
+    if (field === 'start') {
+      setStart(value);
+      if (value > end) setEnd(value);
+    } else {
+      setEnd(value);
+      if (value < start) setStart(value);
+    }
+    setPreset('custom');
+    setCalendarField(null);
+  };
 
   const load = useCallback(async () => {
     if (!admin) return;
@@ -120,12 +225,43 @@ export default function ReportsScreen() {
     {!admin ? <Text style={styles.error}>Les rapports financiers sont réservés aux administrateurs.</Text> : <>
       <FadeIn delay={130}><View style={styles.periodCard}>
         <View style={styles.periodHeading}><View style={styles.periodIcon}><Text style={styles.periodIconText}>⌁</Text></View><View><Text style={styles.periodTitle}>Période du rapport</Text><Text style={styles.periodCaption}>Choisissez les dates à analyser.</Text></View></View>
-        <Text style={styles.fieldLabel}>Du</Text>
-        <TextInput style={styles.input} value={start} onChangeText={setStart} placeholder="AAAA-MM-JJ" placeholderTextColor={t.secondaryText} />
-        <Text style={styles.fieldLabel}>Au</Text>
-        <TextInput style={styles.input} value={end} onChangeText={setEnd} placeholder="AAAA-MM-JJ" placeholderTextColor={t.secondaryText} />
+        <View style={styles.presetRow}>
+          {([
+            ['this_month', 'Ce mois'],
+            ['last_month', 'Mois dernier'],
+            ['custom', 'Personnalisée'],
+          ] as const).map(([value, label]) => <MotionPressable
+            key={value}
+            onPress={() => value === 'custom' ? setPreset('custom') : choosePreset(value)}
+            style={[styles.presetButton, preset === value && styles.presetButtonActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: preset === value }}>
+            <Text style={[styles.presetText, preset === value && styles.presetTextActive]}>{label}</Text>
+          </MotionPressable>)}
+        </View>
+        {preset === 'custom' && <View style={styles.dateRange}>
+          <View style={styles.dateField}>
+            <Text style={styles.fieldLabel}>Du</Text>
+            <MotionPressable style={styles.dateButton} onPress={() => setCalendarField('start')} accessibilityRole="button" accessibilityLabel={`Date de début : ${displayDate(start)}`}>
+              <Text style={styles.dateButtonText}>{displayDate(start)}</Text>
+            </MotionPressable>
+          </View>
+          <View style={styles.dateField}>
+            <Text style={styles.fieldLabel}>Au</Text>
+            <MotionPressable style={styles.dateButton} onPress={() => setCalendarField('end')} accessibilityRole="button" accessibilityLabel={`Date de fin : ${displayDate(end)}`}>
+              <Text style={styles.dateButtonText}>{displayDate(end)}</Text>
+            </MotionPressable>
+          </View>
+        </View>}
         <Action label={loading ? 'Chargement…' : 'Mettre à jour le rapport'} onPress={() => void load()} disabled={loading} />
       </View></FadeIn>
+      {calendarField && <CalendarDatePicker
+        key={calendarField}
+        value={calendarField === 'start' ? start : end}
+        title={calendarField === 'start' ? 'Date de début' : 'Date de fin'}
+        onSelect={(value) => selectDate(calendarField, value)}
+        onClose={() => setCalendarField(null)}
+      />}
       {!!error && <Text style={styles.error}>{error}</Text>}
       {loading && !summary ? <ActivityIndicator color={t.tint} style={{ margin: 20 }} /> : null}
       {summary && <>
@@ -185,7 +321,6 @@ export default function ReportsScreen() {
 }
 
 const makeStyles = (t: AppTheme) => StyleSheet.create({
-  input: { minHeight: 48, borderWidth: 1, borderColor: t.separator, borderRadius: 12, paddingHorizontal: 14, fontSize: 16, color: t.text, marginBottom: 12, backgroundColor: t.surface },
   empty: { color: t.secondaryText, fontSize: 15, textAlign: 'center', marginVertical: 24 },
   error: { color: t.danger, fontSize: 14, lineHeight: 20, marginBottom: 12 },
   periodCard: { backgroundColor: t.surface, borderRadius: 18, padding: 20, borderColor: t.separator, borderWidth: 1, marginBottom: 14 },
@@ -196,6 +331,31 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   periodTitle: { color: t.text, fontSize: 16, fontWeight: '700' },
   periodCaption: { color: t.secondaryText, fontSize: 13, marginTop: 3 },
   fieldLabel: { color: t.text, fontSize: 13, fontWeight: '600', marginBottom: 6 },
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  presetButton: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 13, borderRadius: 20, borderWidth: 1, borderColor: t.separator, backgroundColor: t.surface },
+  presetButtonActive: { backgroundColor: t.tintSurface, borderColor: t.tint },
+  presetText: { color: t.secondaryText, fontSize: 13, fontWeight: '600' },
+  presetTextActive: { color: t.tint },
+  dateRange: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 },
+  dateField: { flexGrow: 1, flexBasis: 140 },
+  dateButton: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: t.separator, borderRadius: 12, backgroundColor: t.surface },
+  dateButtonText: { color: t.text, fontSize: 14 },
+  calendarBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: 'rgba(0,0,0,0.55)' },
+  calendarCard: { width: '100%', maxWidth: 380, padding: 18, borderRadius: 18, backgroundColor: t.surface, borderWidth: 1, borderColor: t.separator },
+  calendarHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  calendarTitle: { color: t.text, fontSize: 17, fontWeight: '700' },
+  calendarClose: { color: t.tint, fontSize: 14, fontWeight: '600' },
+  calendarMonth: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  monthButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: t.tintSurface },
+  monthButtonText: { color: t.tint, fontSize: 24, lineHeight: 28, fontWeight: '600' },
+  monthTitle: { color: t.text, fontSize: 16, fontWeight: '600', textTransform: 'capitalize' },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  weekday: { width: '14.2857%', height: 36, textAlign: 'center', textAlignVertical: 'center', color: t.secondaryText, fontSize: 12, fontWeight: '600' },
+  dayCell: { width: '14.2857%', height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
+  dayText: { color: t.text, fontSize: 14 },
+  todayText: { color: t.tint, fontWeight: '800' },
+  selectedDay: { backgroundColor: t.tint },
+  selectedDayText: { color: t.onTint, fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginVertical: 14 },
   metric: { flexGrow: 1, flexBasis: 175, minHeight: 105, backgroundColor: t.surface, padding: 17, borderRadius: 16, borderColor: t.separator, borderWidth: 1 },
   netMetric: { backgroundColor: t.tintSurface, borderColor: t.tintSurface },
