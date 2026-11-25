@@ -17,8 +17,9 @@ restent sur un disque éphémère.
    Blueprint selon les droits Render de son compte.
 2. Ouvrez le [lien de déploiement Render](https://render.com/deploy?repo=https://github.com/Panda0831/DEP_FLOWSTOCK), puis confirmez la création de `flowstock-api`,
    `flowstock-db` et `flowstock-web`. Render construit l’image API depuis le
-   Dockerfile du dépôt; le front est exporté en fichiers statiques et publié
-   séparément.
+   Dockerfile du dépôt; le conteneur collecte les fichiers statiques et applique
+   les migrations au démarrage. Le front est exporté en fichiers statiques et
+   publié séparément.
 3. Attendez le premier déploiement. Le démarrage applique les migrations, puis
    l’API répond sur `https://flowstock-api.onrender.com/healthz/`.
 4. Le site Expo web est construit par Render avec

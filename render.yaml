@@ -15,10 +15,6 @@ services:
     rootDir: Bakend
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    dockerCommand: >-
-      /bin/sh -c "python manage.py collectstatic --noinput --settings=config.settings.prod
-      && python manage.py migrate --settings=config.settings.prod
-      && exec gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --access-logfile - --error-logfile -"
     healthCheckPath: /healthz/
     autoDeployTrigger: off
     envVars:
@@ -28,6 +24,10 @@ services:
         generateValue: true
       - key: DJANGO_DEBUG
         value: "False"
+      - key: RUN_MIGRATIONS
+        value: "true"
+      - key: WEB_CONCURRENCY
+        value: "1"
       - key: ALLOWED_HOSTS
         fromService:
           name: flowstock-api
