@@ -242,10 +242,19 @@ commandées; le serveur refuse tout dépassement et conserve chaque réception.
 | `GET` | `/api/v1/purchase-receptions/` | Admin | Aucun | Historique paginé des réceptions |
 
 `statut` vaut `en_attente`, `partiellement_recu`, `recu` ou `annule`. Chaque
-achat renvoie `reference`, le total, le montant payé, le solde restant, son
-statut de paiement (`non_paye`, `partiellement_paye`, `paye`), ses lignes, ses
+achat renvoie `reference`, les montants comptables, le solde restant, son
+statut de paiement (`non_paye`, `partiellement_paye`, `paye`,
+`remboursement_attendu`), ses lignes, ses
 réceptions et l'historique des actions avec l'utilisateur associé. Les achats réceptionnés ou déjà payés
 ne peuvent pas être annulés.
+
+Un retour fournisseur diminue le stock et crée un avoir calculé au prix unitaire
+de chaque ligne d'achat. L'API distingue le total initial (`montant_total`), la
+valeur des retours (`montant_retourne`) et le total net après avoir
+(`montant_net`). Le solde à payer est calculé sur ce total net; un retour ne
+déclenche pas automatiquement un mouvement de trésorerie. Si les paiements déjà
+versés dépassent le total net, `montant_remboursable` indique le montant dû par
+le fournisseur et `statut_paiement` vaut `remboursement_attendu`.
 
 ## Paiements
 
@@ -260,7 +269,12 @@ calcul du solde et refuse tout montant supérieur au reste à payer.
 
 Les modes acceptés sont `especes`, `mvola`, `orange_money`, `airtel_money`,
 `virement` et `autre`. Le solde et les paiements apparaissent dans le détail
-d'un achat ou d'une commande.
+d'un achat ou d'une commande. Pour un achat fournisseur, un remboursement
+(`typePaiement: "remboursement"`) n'est accepté qu'après un retour enregistré et
+dans la limite de `montant_remboursable`. Ce mouvement représente l'argent
+effectivement rendu par le fournisseur; il réduit les paiements nets et le
+montant encore à recevoir. Un avoir non encore remboursé reste distinct de ce
+mouvement de trésorerie.
 
 ## Ventes, clients et livraisons
 
