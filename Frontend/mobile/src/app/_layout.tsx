@@ -35,18 +35,18 @@ export default function RootLayout() {
       webPageTranslateY.setValue(0);
       return;
     }
-    webPageOpacity.setValue(0.94);
-    webPageTranslateY.setValue(6);
+    webPageOpacity.setValue(0.96);
+    webPageTranslateY.setValue(4);
     const transition = Animated.parallel([
       Animated.timing(webPageOpacity, {
         toValue: 1,
-        duration: 220,
+        duration: 260,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }),
       Animated.timing(webPageTranslateY, {
         toValue: 0,
-        duration: 220,
+        duration: 260,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }),
@@ -69,8 +69,8 @@ export default function RootLayout() {
             <Stack screenOptions={{
               headerShown: false,
               contentStyle: { flex: 1 },
-              animation: reduceMotion ? 'none' : Platform.select({ ios: 'fade_from_bottom', android: 'fade_from_bottom', default: 'none' }),
-              animationDuration: reduceMotion ? 0 : 220,
+              animation: reduceMotion ? 'none' : Platform.select({ ios: 'fade', android: 'fade', default: 'none' }),
+              animationDuration: reduceMotion ? 0 : 260,
               gestureEnabled: false,
             }} />
           </Animated.View>
