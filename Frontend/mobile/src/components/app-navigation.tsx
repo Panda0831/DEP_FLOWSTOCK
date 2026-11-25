@@ -52,5 +52,5 @@ const styles = StyleSheet.create({
   bar: { borderTopWidth: 1, paddingTop: 7, paddingHorizontal: 12 },
   row: { flexDirection: 'row', width: '100%', maxWidth: 760, alignSelf: 'center', gap: 6 },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, borderRadius: Radius.control },
-  label: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
+  label: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
 });
