@@ -15,6 +15,7 @@ services:
     rootDir: Bakend
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    dockerCommand: /app/render-start.sh
     healthCheckPath: /healthz/
     autoDeployTrigger: off
     envVars:
@@ -24,8 +25,6 @@ services:
         generateValue: true
       - key: DJANGO_DEBUG
         value: "False"
-      - key: RUN_MIGRATIONS
-        value: "true"
       - key: WEB_CONCURRENCY
         value: "1"
       - key: ALLOWED_HOSTS

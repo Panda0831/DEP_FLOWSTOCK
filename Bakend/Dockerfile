@@ -14,9 +14,10 @@ RUN python -m pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=flowstock:flowstock . .
 RUN mkdir -p /app/media /app/staticfiles \
+    && chmod +x /app/render-start.sh \
     && chown -R flowstock:flowstock /app/media /app/staticfiles
 
 USER flowstock
 EXPOSE 8000
 
-CMD ["sh", "-c", "if [ \"${RUN_MIGRATIONS:-false}\" = \"true\" ]; then python manage.py collectstatic --noinput --settings=config.settings.prod && python manage.py migrate --settings=config.settings.prod || exit $?; fi; exec gunicorn --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --access-logfile - --error-logfile - config.wsgi:application"]
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --access-logfile - --error-logfile - config.wsgi:application"]
