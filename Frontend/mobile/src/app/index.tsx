@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
@@ -20,24 +21,19 @@ import { BrandLockup } from '@/components/brand-lockup';
 import { BrandDivider, FadeIn, MotionPressable } from '@/components/motion';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
-function FieldIcon({ kind }: { kind: 'person' | 'mail' | 'lock' }) {
+function FieldIcon({ kind }: { kind: 'mail' | 'lock' }) {
   const t = useAppTheme();
-  const styles = useMemo(() => makeStyles(t), [t]);
-  if (kind === 'mail') return <Text style={styles.mailIcon}>✉</Text>;
-  if (kind === 'person') {
-    return (
-      <View style={styles.personIcon}>
-        <View style={styles.personHead} />
-        <View style={styles.personShoulders} />
-      </View>
-    );
-  }
-  return (
-    <View style={styles.lockIcon}>
-      <View style={styles.lockArch} />
-      <View style={styles.lockBody} />
-    </View>
-  );
+  return <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+    {kind === 'mail' ? <>
+      <Rect x={3.5} y={5.5} width={17} height={13} rx={2} stroke={t.tint} strokeWidth={1.7} />
+      <Path d="m4.5 7 7.5 6 7.5-6" stroke={t.tint} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+    </> : <>
+      <Path d="M7.5 10V7.5a4.5 4.5 0 0 1 9 0V10" stroke={t.tint} strokeWidth={1.7} strokeLinecap="round" />
+      <Rect x={5} y={10} width={14} height={11} rx={2} stroke={t.tint} strokeWidth={1.7} />
+      <Circle cx={12} cy={15} r={1} fill={t.tint} />
+      <Path d="M12 16v2" stroke={t.tint} strokeWidth={1.7} strokeLinecap="round" />
+    </>}
+  </Svg>;
 }
 
 function PasswordEye({ hidden }: { hidden: boolean }) {
@@ -62,7 +58,7 @@ function Field({
   textContentType,
   trailing,
 }: {
-  icon: 'person' | 'mail' | 'lock';
+  icon: 'mail' | 'lock';
   placeholder: string;
   value: string;
   onChangeText: (value: string) => void;
@@ -74,12 +70,14 @@ function Field({
 }) {
   const t = useAppTheme();
   const styles = useMemo(() => makeStyles(t), [t]);
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={styles.field}>
+    <View style={[styles.field, focused && styles.fieldFocused]}>
       <View style={styles.fieldIcon} accessibilityElementsHidden>
         <FieldIcon kind={icon} />
       </View>
       <TextInput
+        nativeID={`flowstock-login-${icon}`}
         style={styles.input}
         placeholder={placeholder}
         placeholderTextColor={t.secondaryText}
@@ -91,6 +89,8 @@ function Field({
         autoComplete={autoComplete}
         textContentType={textContentType}
         returnKeyType="done"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
       />
       {trailing}
     </View>
@@ -357,14 +357,14 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     backgroundColor: t.surface,
   },
   fieldIcon: { width: 29, alignItems: 'flex-start', justifyContent: 'center' },
-  mailIcon: { color: t.tint, fontSize: 20, lineHeight: 24 },
-  personIcon: { width: 19, height: 22, alignItems: 'center', justifyContent: 'flex-end' },
-  personHead: { width: 8, height: 8, borderWidth: 1.7, borderColor: t.tint, borderRadius: 5, marginBottom: 2 },
-  personShoulders: { width: 17, height: 9, borderWidth: 1.7, borderColor: t.tint, borderTopLeftRadius: 10, borderTopRightRadius: 10, borderBottomWidth: 0 },
-  lockIcon: { width: 19, height: 22, justifyContent: 'flex-end', alignItems: 'center' },
-  lockArch: { width: 12, height: 10, borderWidth: 1.7, borderColor: t.tint, borderBottomWidth: 0, borderTopLeftRadius: 7, borderTopRightRadius: 7 },
-  lockBody: { width: 17, height: 12, borderWidth: 1.7, borderColor: t.tint, borderRadius: 3, backgroundColor: t.surface },
-  input: { flex: 1, color: t.text, fontSize: 16, paddingVertical: 0 },
+  fieldFocused: { borderColor: t.tint },
+  input: {
+    flex: 1,
+    color: t.text,
+    fontSize: 16,
+    paddingVertical: 0,
+    outlineWidth: 0,
+  },
   eyeIcon: {
     width: 22,
     height: 15,
