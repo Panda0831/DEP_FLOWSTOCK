@@ -26,7 +26,7 @@
 - [ ] Choisir le canal de distribution de l’application Expo (EAS Build ou autre) et ses identifiants de signature.
 - [ ] Ajouter les ajustements manuels positifs et négatifs de stock avec motif obligatoire, date, utilisateur et référence d’opération, conformément au cahier des charges.
 - [ ] Vérifier le déploiement des migrations sur la base MySQL cible et faire un parcours d’acceptation sur mobile avec des données représentatives.
-- [ ] Confirmer que les achats retournés au fournisseur et les remboursements éventuels sont traités comme attendu par les règles comptables du projet.
+- [x] Confirmer que les achats retournés au fournisseur et les remboursements éventuels sont traités comme attendu par les règles comptables du projet.
 
 ## Plus tard — rapports
 
