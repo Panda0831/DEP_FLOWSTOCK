@@ -48,7 +48,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   alertQty: { color: t.warning, fontSize: 14, fontWeight: '700' },
   alertCopy: { flex: 1, minWidth: 0 },
   restockButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 11, borderWidth: 1, borderColor: t.separator, borderRadius: Radius.control, backgroundColor: t.surface },
-  restockButtonText: { color: t.tint, fontSize: 12, fontWeight: '700' },
+  restockButtonText: { color: t.tint, fontSize: 14, lineHeight: 20, fontWeight: '700' },
   empty: { color: t.secondaryText, fontSize: 15, padding: 20 },
   lowerLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   lowerLink: { minHeight: HitSize, justifyContent: 'center', paddingHorizontal: 12 },
