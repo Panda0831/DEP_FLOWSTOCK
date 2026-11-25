@@ -69,13 +69,18 @@ n'est jamais renvoyé.
 | Méthode | Route | Accès | Corps de requête | Résultat |
 |---|---|---|---|---|
 | `POST` | `/api/v1/auth/signup/` | Public | `email`, `nom_complet`, `password` | `201`, profil créé avec le rôle `VENDEUR`, et session ouverte |
-| `POST` | `/api/v1/auth/login/` | Public | `email`, `password` | `200`, profil et session ouverte ; `401` si identifiants invalides |
+| `POST` | `/api/v1/auth/login/` | Public | `email`, `password` | `200`, profil et session ouverte ; `401` si identifiants invalides ; `429` si temporairement bloqué après plusieurs échecs |
 | `POST` | `/api/v1/auth/logout/` | Connecté | Aucun | `204`, session fermée |
 | `GET` | `/api/v1/auth/me/` | Connecté | Aucun | `200`, profil courant |
 | `PATCH` | `/api/v1/auth/me/` | Connecté | Champs modifiables du profil, notamment `nom_complet` | `200`, profil mis à jour |
 | `POST` | `/api/v1/auth/password/change/` | Connecté | `old_password`, `new_password` | `200`, `{"detail":"Mot de passe modifié."}` |
 | `POST` | `/api/v1/auth/password/reset/request/` | Public | `email` | `200`, message générique pour ne pas révéler si le compte existe |
 | `POST` | `/api/v1/auth/password/reset/confirm/` | Public avec jeton | `uid`, `token`, `new_password` | `200` si le lien est valide ; `400` sinon |
+
+Après plusieurs échecs, la connexion est temporairement bloquée selon
+`AXES_FAILURE_LIMIT` et `AXES_COOLOFF_MINUTES` (5 échecs et 15 minutes par
+défaut). La réponse `429` indique le délai avant nouvel essai; la demande de
+réinitialisation du mot de passe reste accessible pendant le blocage.
 
 Exemple de création d'un vendeur :
 
