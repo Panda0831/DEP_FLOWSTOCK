@@ -135,7 +135,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   title: { color: t.text, fontSize: 28, fontWeight: '800', textAlign: 'center' },
   subtitle: { color: t.secondaryText, fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 9, marginBottom: 19 },
   form: { gap: 0 },
-  fieldLabel: { color: t.text, fontSize: 12, fontWeight: '700', marginBottom: 7, marginTop: 11 },
+  fieldLabel: { color: t.text, fontSize: 14, lineHeight: 20, fontWeight: '700', marginBottom: 7, marginTop: 11 },
   input: { height: 54, borderWidth: 1, borderColor: t.separator, borderRadius: 14, paddingHorizontal: 16, fontSize: 15, color: t.text, backgroundColor: t.surface },
   error: { color: t.danger, fontSize: 13, lineHeight: 18, marginTop: 14, padding: 11, borderRadius: 11, backgroundColor: t.dangerSurface },
   button: { height: 56, backgroundColor: t.tint, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 22 },
