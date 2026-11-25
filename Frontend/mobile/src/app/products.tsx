@@ -123,7 +123,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   summary: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: -6, marginBottom: 18 },
   summaryCard: { flexGrow: 1, flexBasis: 100, minHeight: 78, justifyContent: 'center', backgroundColor: t.surface, borderWidth: 1, borderColor: t.separator, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 10 },
   alertCard: { backgroundColor: t.warningSurface, borderColor: t.warningSurface },
-  summaryLabel: { color: t.secondaryText, fontSize: 11, fontWeight: '600' },
+  summaryLabel: { color: t.secondaryText, fontSize: 14, lineHeight: 20, fontWeight: '600' },
   summaryValue: { color: t.text, fontSize: 20, fontWeight: '700', marginTop: 4 },
   alertValue: { color: t.warning },
 });
