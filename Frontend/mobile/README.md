@@ -16,6 +16,11 @@ Renseignez `EXPO_PUBLIC_API_URL` avec l’adresse du backend complète, préfix�
 - émulateur Android : `http://10.0.2.2:8000/api/v1`
 - téléphone physique en Wi-Fi : `http://<adresse-IP-du-PC>:8000/api/v1`
 
+Pour utiliser l’API Render depuis un build mobile, définissez
+`EXPO_PUBLIC_API_URL=https://flowstock-api-n56q.onrender.com/api/v1` dans
+`Frontend/mobile/.env` avant `npx expo start` ou configurez cette variable dans
+l’environnement de build Expo EAS avant de compiler l’application installable.
+
 ### Téléphone Android connecté en USB
 
 Activez le débogage USB, connectez le téléphone, puis exécutez depuis

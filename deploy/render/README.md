@@ -1,8 +1,9 @@
 # Déploiement de FlowStock sur Render
 
 Le [Blueprint racine](../../render.yaml) définit l’API Django construite avec
-[`Bakend/Dockerfile`](../../Bakend/Dockerfile), sa base PostgreSQL et le site
-statique Expo Web, sur les plans gratuits de Render. La configuration sert à
+[`Bakend/Dockerfile`](../../Bakend/Dockerfile) et sa base PostgreSQL sur les
+plans gratuits de Render. L’application Expo s’exécute sur les téléphones et
+appelle cette API; Render n’héberge que l’API et la base. Cette configuration sert à
 un essai ou une démonstration. Elle ne convient pas à des données métier à
 conserver : la base gratuite expire après 30 jours, le service web s’endort
 après 15 minutes sans trafic et les fichiers envoyés (photos des produits)
@@ -15,30 +16,24 @@ restent sur un disque éphémère.
    administrateur du dépôt d’autoriser l’application GitHub de Render pour ce
    dépôt. Une fois l’accès accordé, un collaborateur peut créer et gérer le
    Blueprint selon les droits Render de son compte.
-2. Ouvrez le [lien de déploiement Render](https://render.com/deploy?repo=https://github.com/Panda0831/DEP_FLOWSTOCK), puis confirmez la création de `flowstock-api`,
-   `flowstock-db` et `flowstock-web`. Render construit l’image API depuis le
-   Dockerfile du dépôt; le conteneur collecte les fichiers statiques et applique
-   les migrations au démarrage. Le front est exporté en fichiers statiques et
-   publié séparément.
+2. Ouvrez le [lien de déploiement Render](https://render.com/deploy?repo=https://github.com/Panda0831/DEP_FLOWSTOCK), puis confirmez la création de `flowstock-api` et
+   `flowstock-db`. Render construit l’image API depuis le Dockerfile du dépôt;
+   le conteneur collecte les fichiers statiques et applique les migrations au
+   démarrage.
 3. Attendez le premier déploiement. Le démarrage applique les migrations, puis
    l’API répond sur `https://flowstock-api-n56q.onrender.com/healthz/`.
-4. Le site Expo web est construit par Render avec
-   `EXPO_PUBLIC_API_URL=https://flowstock-api-n56q.onrender.com/api/v1` et publié à
-   `https://flowstock-web.onrender.com`. L’URL de l’API est également visible
-   dans son tableau de bord Render. Pour publier l’application native iOS ou
-   Android, utilisez Expo EAS séparément; le site statique Render ne génère pas
-   les applications mobiles.
+4. Dans `Frontend/mobile/.env`, définissez
+   `EXPO_PUBLIC_API_URL=https://flowstock-api-n56q.onrender.com/api/v1` pour
+   lancer l’application avec Expo. Pour compiler une application installable,
+   fournissez la même variable à l’environnement de build Expo EAS avant le
+   build. Cette variable est intégrée au client mobile; elle ne contient pas de
+   secret.
 
 Le bouton de déploiement désactive les redéploiements automatiques afin que les
 créations de service indépendantes ne redéploient pas toutes à chaque commit.
 Pour publier une nouvelle version, déclenchez un déploiement manuel dans Render.
 Les secrets sont générés par Render et restent dans ses variables
 d’environnement; aucun secret n’est à ajouter au dépôt.
-
-L’API autorise l’origine web `flowstock-web.onrender.com` pour CORS et CSRF.
-Si vous renommez le site ou ajoutez un domaine personnalisé, mettez à jour
-`CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` et la valeur
-`EXPO_PUBLIC_API_URL` dans le Blueprint, puis redéployez les services.
 
 ## Premier compte administrateur
 
