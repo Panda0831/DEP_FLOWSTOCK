@@ -21,9 +21,9 @@ restent sur un disque éphémère.
    les migrations au démarrage. Le front est exporté en fichiers statiques et
    publié séparément.
 3. Attendez le premier déploiement. Le démarrage applique les migrations, puis
-   l’API répond sur `https://flowstock-api.onrender.com/healthz/`.
+   l’API répond sur `https://flowstock-api-n56q.onrender.com/healthz/`.
 4. Le site Expo web est construit par Render avec
-   `EXPO_PUBLIC_API_URL=https://flowstock-api.onrender.com/api/v1` et publié à
+   `EXPO_PUBLIC_API_URL=https://flowstock-api-n56q.onrender.com/api/v1` et publié à
    `https://flowstock-web.onrender.com`. L’URL de l’API est également visible
    dans son tableau de bord Render. Pour publier l’application native iOS ou
    Android, utilisez Expo EAS séparément; le site statique Render ne génère pas
@@ -47,7 +47,7 @@ administrateur, utilisez la connexion externe PostgreSQL fournie dans l’onglet
 **Connect** de `flowstock-db`, depuis un environnement local qui a les
 dépendances backend installées. La connexion externe de Render requiert TLS.
 Définissez temporairement `DATABASE_URL`, `DJANGO_SECRET_KEY` (copiée depuis les
-variables du service web) et `ALLOWED_HOSTS=flowstock-api.onrender.com`, puis
+variables du service web) et `ALLOWED_HOSTS=flowstock-api-n56q.onrender.com`, puis
 lancez depuis `Bakend/` :
 
 ```bash
