@@ -182,3 +182,133 @@ def test_supplier_return_cannot_exceed_received_quantity_and_reduces_stock():
     )
     assert excessive.status_code == 400
     assert stock_actuel(product) == 4
+
+
+def test_unpaid_supplier_return_reduces_the_amount_due():
+    admin = UserFactory(role="ADMIN", is_staff=True)
+    supplier = Fournisseur.objects.create(nomFournisseur="Grossiste")
+    product = Produit.objects.create(nomProduit="Lentilles", prixVente="100", prixAchat="40")
+    client = APIClient()
+    client.force_login(admin)
+    created = client.post(
+        "/api/v1/purchases/",
+        {
+            "supplier": str(supplier.public_id),
+            "items": [{"product": str(product.public_id), "quantity": 10, "unit_price": "40.00"}],
+        },
+        format="json",
+    )
+    purchase_id = created.data["public_id"]
+    client.post(
+        f"/api/v1/purchases/{purchase_id}/receive/",
+        {"items": [{"product": str(product.public_id), "quantity": 6}]},
+        format="json",
+    )
+
+    returned = client.post(
+        f"/api/v1/purchases/{purchase_id}/return-to-supplier/",
+        {"items": [{"product": str(product.public_id), "quantity": 2}]},
+        format="json",
+    )
+    assert returned.status_code == 201
+    assert Decimal(returned.data["montant_total"]) == Decimal("400.00")
+    assert Decimal(returned.data["montant_retourne"]) == Decimal("80.00")
+    assert Decimal(returned.data["montant_net"]) == Decimal("320.00")
+    assert Decimal(returned.data["montant_paye"]) == Decimal("0.00")
+    assert Decimal(returned.data["solde_restant"]) == Decimal("320.00")
+    assert Decimal(returned.data["montant_remboursable"]) == Decimal("0.00")
+    assert returned.data["historique"][0]["details"]["montant_avoir"] == "80.00"
+
+    excessive = client.post(
+        "/api/v1/payments/",
+        {"operation": "purchase", "public_id": purchase_id, "montant": "321.00"},
+        format="json",
+    )
+    assert excessive.status_code == 400
+    paid = client.post(
+        "/api/v1/payments/",
+        {"operation": "purchase", "public_id": purchase_id, "montant": "320.00"},
+        format="json",
+    )
+    assert paid.status_code == 201
+
+
+def test_paid_supplier_return_allows_only_the_supplier_refund_due():
+    admin = UserFactory(role="ADMIN", is_staff=True)
+    supplier = Fournisseur.objects.create(nomFournisseur="Grossiste")
+    product = Produit.objects.create(nomProduit="Haricots", prixVente="100", prixAchat="40")
+    client = APIClient()
+    client.force_login(admin)
+    created = client.post(
+        "/api/v1/purchases/",
+        {
+            "supplier": str(supplier.public_id),
+            "items": [{"product": str(product.public_id), "quantity": 10, "unit_price": "40.00"}],
+        },
+        format="json",
+    )
+    purchase_id = created.data["public_id"]
+    paid = client.post(
+        "/api/v1/payments/",
+        {"operation": "purchase", "public_id": purchase_id, "montant": "400.00"},
+        format="json",
+    )
+    assert paid.status_code == 201
+    premature_refund = client.post(
+        "/api/v1/payments/",
+        {
+            "operation": "purchase",
+            "public_id": purchase_id,
+            "typePaiement": "remboursement",
+            "montant": "1.00",
+        },
+        format="json",
+    )
+    assert premature_refund.status_code == 400
+    client.post(
+        f"/api/v1/purchases/{purchase_id}/receive/",
+        {"items": [{"product": str(product.public_id), "quantity": 5}]},
+        format="json",
+    )
+    returned = client.post(
+        f"/api/v1/purchases/{purchase_id}/return-to-supplier/",
+        {"items": [{"product": str(product.public_id), "quantity": 2}]},
+        format="json",
+    )
+    assert returned.status_code == 201
+    assert Decimal(returned.data["montant_net"]) == Decimal("320.00")
+    assert Decimal(returned.data["montant_paye"]) == Decimal("400.00")
+    assert Decimal(returned.data["montant_remboursable"]) == Decimal("80.00")
+    assert returned.data["statut_paiement"] == "remboursement_attendu"
+
+    excessive = client.post(
+        "/api/v1/payments/",
+        {
+            "operation": "purchase",
+            "public_id": purchase_id,
+            "typePaiement": "remboursement",
+            "montant": "81.00",
+        },
+        format="json",
+    )
+    assert excessive.status_code == 400
+    refund = client.post(
+        "/api/v1/payments/",
+        {
+            "operation": "purchase",
+            "public_id": purchase_id,
+            "typePaiement": "remboursement",
+            "montant": "80.00",
+            "mode": "virement",
+            "reference": "AVOIR-001",
+        },
+        format="json",
+    )
+    assert refund.status_code == 201
+    assert refund.data["typePaiement"] == "remboursement"
+
+    detail = client.get(f"/api/v1/purchases/{purchase_id}/")
+    assert Decimal(detail.data["montant_paye"]) == Decimal("320.00")
+    assert Decimal(detail.data["solde_restant"]) == Decimal("0.00")
+    assert Decimal(detail.data["montant_remboursable"]) == Decimal("0.00")
+    assert detail.data["statut_paiement"] == "paye"
