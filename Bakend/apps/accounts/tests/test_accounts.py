@@ -1,6 +1,10 @@
+import json
+
 import pytest
+from axes.utils import reset as reset_login_attempts
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
+from django.test import override_settings
 from rest_framework.test import APIClient
 
 from .factories import UserFactory
@@ -73,6 +77,45 @@ def test_login_failure_is_identical_and_profile_protected():
         == 401
     )
     assert client.get("/api/v1/auth/me/").status_code == 403
+
+
+@override_settings(
+    AXES_ENABLED=True,
+    AXES_FAILURE_LIMIT=1,
+    AXES_COOLOFF_MINUTES=15,
+    AXES_COOLOFF_TIME=15,
+    AXES_LOCKOUT_PARAMETERS=["ip_address"],
+)
+def test_locked_login_returns_json_with_cooloff_guidance():
+    user = UserFactory(password="StrongPassword!123")
+    reset_login_attempts(ip="127.0.0.1")
+    client = APIClient()
+    try:
+        failed = client.post(
+            "/api/v1/auth/login/",
+            {"email": user.email, "password": "WrongPassword!123"},
+            format="json",
+        )
+        assert failed.status_code == 401
+
+        locked = client.post(
+            "/api/v1/auth/login/",
+            {"email": user.email, "password": "StrongPassword!123"},
+            format="json",
+        )
+        assert locked.status_code == 429
+        response_data = json.loads(locked.content)
+        assert response_data["code"] == "login_temporarily_locked"
+        assert response_data["retry_after_minutes"] == 15
+        assert "réinitialisez votre mot de passe" in response_data["detail"].lower()
+        reset_request = client.post(
+            "/api/v1/auth/password/reset/request/",
+            {"email": user.email},
+            format="json",
+        )
+        assert reset_request.status_code == 200
+    finally:
+        reset_login_attempts(ip="127.0.0.1")
 
 
 def test_password_reset_request_is_anti_enumeration():

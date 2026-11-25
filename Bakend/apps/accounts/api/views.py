@@ -1,3 +1,4 @@
+from axes.handlers.proxy import AxesProxyHandler
 from django.contrib.auth import (
     authenticate,
     get_user_model,
@@ -19,6 +20,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.lockout import login_lockout_response
 from apps.accounts.permissions import IsAdminRole
 from apps.accounts.services import change_password, security_event
 
@@ -49,10 +51,23 @@ class SignupAPIView(APIView):
 class LoginAPIView(APIView):
     permission_classes = (AllowAny,)
 
-    @extend_schema(request=LoginSerializer, responses=UserSerializer)
+    @extend_schema(
+        request=LoginSerializer,
+        responses={
+            200: UserSerializer,
+            401: OpenApiTypes.OBJECT,
+            429: OpenApiTypes.OBJECT,
+        },
+    )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        credentials = {
+            "username": serializer.validated_data["email"],
+            "ip_address": request.META.get("REMOTE_ADDR"),
+        }
+        if AxesProxyHandler.is_locked(request, credentials):
+            return login_lockout_response(request, credentials)
         user = authenticate(
             request,
             username=serializer.validated_data["email"],
