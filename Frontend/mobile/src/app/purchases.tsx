@@ -203,6 +203,25 @@ export default function PurchasesScreen() {
     } finally { setBusy(false); }
   };
 
+  const recordSupplierRefund = async (purchase: Purchase) => {
+    const montant = Number(paymentAmounts[purchase.public_id]);
+    if (!Number.isFinite(montant) || montant <= 0) { setError('Indiquez un montant de remboursement valide.'); return; }
+    setBusy(true); setError('');
+    try {
+      await api.post('/payments/', {
+        operation: 'purchase',
+        public_id: purchase.public_id,
+        typePaiement: 'remboursement',
+        montant,
+        mode: paymentMode,
+      });
+      setPaymentAmounts((current) => ({ ...current, [purchase.public_id]: '' }));
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Remboursement fournisseur impossible.');
+    } finally { setBusy(false); }
+  };
+
   const cancel = async (purchase: Purchase) => {
     setBusy(true); setError('');
     try { await api.post(`/purchases/${purchase.public_id}/cancel/`); await load(); }
@@ -283,7 +302,9 @@ export default function PurchasesScreen() {
     {!loading && focusedPurchase && <View style={styles.workflow}>
       <Text style={styles.workflowEyebrow}>{params.step === 'done' ? 'ACHAT TERMINÉ' : 'ÉTAPE SUIVANTE'}</Text>
       <Text style={styles.workflowTitle}>{focusedPurchase.reference}</Text>
-      <Text style={styles.workflowText}>{focusedPurchase.statut_paiement === 'paye' && focusedPurchase.lignes.every((line) => line.quantite_recue >= line.quantite)
+      <Text style={styles.workflowText}>{Number(focusedPurchase.montant_remboursable) > 0
+        ? `Le fournisseur doit encore rembourser ${Number(focusedPurchase.montant_remboursable).toLocaleString('fr-FR')} Ar.`
+        : focusedPurchase.statut_paiement === 'paye' && focusedPurchase.lignes.every((line) => line.quantite_recue >= line.quantite)
         ? 'Toutes les quantités sont reçues et le paiement est soldé.'
         : focusedPurchase.lignes.some((line) => line.quantite_recue < line.quantite)
           ? 'Saisissez les quantités réellement reçues dans cet achat. Le stock sera mis à jour à la réception.'
@@ -349,15 +370,23 @@ export default function PurchasesScreen() {
             </View>}
           </View>;
         })}
-        <View style={styles.totals}><Text style={styles.totalLabel}>Total {Number(purchase.montant_total).toLocaleString('fr-FR')} Ar</Text><Text style={styles.totalLabel}>Payé {Number(purchase.montant_paye).toLocaleString('fr-FR')} Ar</Text><Text style={styles.totalValue}>Reste {Number(purchase.solde_restant).toLocaleString('fr-FR')} Ar</Text></View>
+        <View style={styles.totals}>
+          <Text style={styles.totalLabel}>Total initial {Number(purchase.montant_total).toLocaleString('fr-FR')} Ar</Text>
+          {Number(purchase.montant_retourne) > 0 && <Text style={styles.totalLabel}>Avoir fournisseur {Number(purchase.montant_retourne).toLocaleString('fr-FR')} Ar</Text>}
+          <Text style={styles.totalLabel}>Total net {Number(purchase.montant_net).toLocaleString('fr-FR')} Ar</Text>
+          <Text style={styles.totalLabel}>Payé net {Number(purchase.montant_paye).toLocaleString('fr-FR')} Ar</Text>
+          <Text style={styles.totalValue}>Reste à payer {Number(purchase.solde_restant).toLocaleString('fr-FR')} Ar</Text>
+          {Number(purchase.montant_remboursable) > 0 && <Text style={styles.refundDue}>Remboursement à recevoir {Number(purchase.montant_remboursable).toLocaleString('fr-FR')} Ar</Text>}
+        </View>
         <Text style={styles.history}>Paiement : {purchase.statut_paiement.replaceAll('_', ' ')}</Text>
         {!!purchase.receptions.length && <Text style={styles.history}>{purchase.receptions.length} réception(s) · dernière : {purchase.receptions[0].date}</Text>}
-        {purchase.paiements.map((payment) => <Text style={styles.history} key={payment.public_id}>{payment.date} · {Number(payment.montant).toLocaleString('fr-FR')} Ar · {payment.mode}</Text>)}
+        {purchase.paiements.map((payment) => <Text style={styles.history} key={payment.public_id}>{payment.date} · {payment.typePaiement === 'remboursement' ? 'Remboursement reçu' : 'Versé au fournisseur'} · {Number(payment.montant).toLocaleString('fr-FR')} Ar · {payment.mode}</Text>)}
         {!!purchase.historique.length && <Text style={styles.history}>Historique : {purchase.historique.map((event) => `${event.evenement} (${event.utilisateur})`).join(' · ')}</Text>}
         {purchase.statut === 'en_attente' && purchase.montant_paye === '0.00' && <MotionPressable onPress={() => editPurchase(purchase)} disabled={busy} style={styles.cancel}><Text style={styles.editText}>Modifier</Text></MotionPressable>}
         {purchase.statut !== 'recu' && purchase.statut !== 'annule' && <View style={styles.actions}><Action label={busy ? '…' : 'Réceptionner'} onPress={() => void receive(purchase)} disabled={busy || !purchase.lignes.some((line) => Number(receiveQuantities[purchase.public_id]?.[line.product]) > 0)} /></View>}
         {purchase.lignes.some((line) => line.quantite_recue > line.quantite_retournee) && purchase.statut !== 'annule' && <View style={styles.actions}><Action label={busy ? '…' : 'Retourner'} onPress={() => void returnToSupplier(purchase)} disabled={busy || !purchase.lignes.some((line) => Number(returnQuantities[purchase.public_id]?.[line.product]) > 0)} /></View>}
         {Number(purchase.solde_restant) > 0 && purchase.statut !== 'annule' && <View style={styles.paymentBox}><OptionSelect label="Mode de paiement" options={PAYMENT_MODES} value={paymentMode} onChange={setPaymentMode} pageSize={PAYMENT_MODES.length} /><Text style={styles.inputLabel}>Montant versé (Ar)</Text><View style={styles.paymentRow}><TextInput style={[ui.input, styles.paymentInput]} value={paymentAmounts[purchase.public_id] || ''} onChangeText={(value) => setPaymentAmounts((current) => ({ ...current, [purchase.public_id]: value }))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={t.secondaryText} accessibilityLabel={`Montant à payer pour l’achat ${purchase.reference}, solde ${purchase.solde_restant} ariary`} /><Action label="Enregistrer le paiement" onPress={() => void pay(purchase)} disabled={busy || !(Number(paymentAmounts[purchase.public_id]) > 0)} /></View></View>}
+        {Number(purchase.montant_remboursable) > 0 && <View style={styles.paymentBox}><OptionSelect label="Mode du remboursement" options={PAYMENT_MODES} value={paymentMode} onChange={setPaymentMode} pageSize={PAYMENT_MODES.length} /><Text style={styles.inputLabel}>Montant remboursé par le fournisseur (Ar)</Text><View style={styles.paymentRow}><TextInput style={[ui.input, styles.paymentInput]} value={paymentAmounts[purchase.public_id] || ''} onChangeText={(value) => setPaymentAmounts((current) => ({ ...current, [purchase.public_id]: value }))} keyboardType="decimal-pad" placeholder={`Maximum ${purchase.montant_remboursable}`} placeholderTextColor={t.secondaryText} accessibilityLabel={`Montant remboursé par le fournisseur, maximum ${purchase.montant_remboursable} ariary`} /><Action label="Enregistrer le remboursement" onPress={() => void recordSupplierRefund(purchase)} disabled={busy || !(Number(paymentAmounts[purchase.public_id]) > 0)} /></View></View>}
         {purchase.statut === 'en_attente' && purchase.montant_paye === '0.00' && <MotionPressable onPress={() => void cancel(purchase)} disabled={busy} style={styles.cancel}><Text style={styles.cancelText}>Annuler</Text></MotionPressable>}
       </View>
     </FadeIn>)}
@@ -386,6 +415,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   modeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
   totalLabel: { color: t.secondaryText, fontSize: 11, fontWeight: '600' },
   totalValue: { color: t.text, fontSize: 13, fontWeight: '800' },
+  refundDue: { color: t.danger, fontSize: 13, fontWeight: '700' },
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   purchase: { backgroundColor: t.surface, padding: 16, borderColor: t.separator, borderWidth: 1, borderRadius: 16, marginBottom: 11 },
   purchaseFocused: { borderColor: t.tint, borderWidth: 2 },
