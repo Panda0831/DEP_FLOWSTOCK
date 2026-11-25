@@ -8,6 +8,7 @@ from django.db.models.functions import TruncMonth
 from rest_framework.exceptions import ValidationError
 
 from apps.catalog.models import Produit
+from apps.inventory.models import Mouvement
 from apps.inventory.services import stock_actuel
 from apps.sales.models import Commande, LigneCommande, Livraison
 
@@ -209,8 +210,45 @@ def montant_paye(operation):
     return max(versements - remboursements, ZERO)
 
 
+def montant_retourne(operation):
+    from apps.purchasing.models import Achat
+
+    if not isinstance(operation, Achat):
+        return ZERO
+
+    quantites = Mouvement.objects.filter(
+        typeMouvement=Mouvement.TypeMouvement.RETOUR_FOURNISSEUR,
+        referenceOperation=operation.reference,
+    ).values("idProduit_id").annotate(total=Sum("quantite"))
+    prix_unitaires = dict(operation.lignes.values_list("idProduit_id", "prixUnitaire"))
+    return sum(
+        (
+            prix_unitaires[retour["idProduit_id"]] * retour["total"]
+            for retour in quantites
+            if retour["idProduit_id"] in prix_unitaires
+        ),
+        start=ZERO,
+    )
+
+
+def montant_total_net(operation):
+    from apps.purchasing.models import Achat
+
+    if isinstance(operation, Achat):
+        return max(operation.montant_total - montant_retourne(operation), ZERO)
+    return operation.montant_total
+
+
+def montant_remboursable(operation):
+    from apps.purchasing.models import Achat
+
+    if not isinstance(operation, Achat):
+        return ZERO
+    return max(montant_paye(operation) - montant_total_net(operation), ZERO)
+
+
 def montant_restant(operation):
-    return max(operation.montant_total - montant_paye(operation), ZERO)
+    return max(montant_total_net(operation) - montant_paye(operation), ZERO)
 
 
 @transaction.atomic
@@ -230,13 +268,11 @@ def enregistrer_paiement(
     from apps.sales.models import Commande
 
     if type_operation == "purchase":
-        if type_paiement == Paiement.TypePaiement.REMBOURSEMENT:
-            raise ValidationError({"typePaiement": "Le remboursement fournisseur n'est pas pris en charge."})
         try:
             operation = Achat.objects.select_for_update().get(public_id=public_id)
         except Achat.DoesNotExist:
             raise ValidationError({"purchase": "Achat introuvable."})
-        if operation.statut == Achat.Statut.ANNULE:
+        if operation.statut == Achat.Statut.ANNULE and type_paiement != Paiement.TypePaiement.REMBOURSEMENT:
             raise ValidationError({"detail": "Un achat annulé ne peut pas recevoir de paiement."})
         lien = {"idAchat": operation}
     elif type_operation == "order":
@@ -256,11 +292,22 @@ def enregistrer_paiement(
         raise ValidationError({"operation": "Type d'opération invalide."})
 
     if type_paiement == Paiement.TypePaiement.REMBOURSEMENT:
-        if not isinstance(operation, Commande) or operation.statut != Commande.Statut.RETOURNEE:
-            raise ValidationError({"detail": "Un remboursement est possible après le retour d'une commande."})
-        disponible = montant_paye(operation)
+        if isinstance(operation, Achat):
+            if montant_retourne(operation) <= ZERO:
+                raise ValidationError(
+                    {"detail": "Un remboursement fournisseur est possible après un retour enregistré."}
+                )
+            disponible = montant_remboursable(operation)
+        elif isinstance(operation, Commande) and operation.statut == Commande.Statut.RETOURNEE:
+            disponible = montant_paye(operation)
+        else:
+            raise ValidationError(
+                {"detail": "Un remboursement est possible après le retour de l'opération."}
+            )
         if montant > disponible:
-            raise ValidationError({"montant": f"Le remboursement dépasse les paiements reçus ({disponible})."})
+            raise ValidationError(
+                {"montant": f"Le remboursement dépasse le montant remboursable ({disponible})."}
+            )
     else:
         restant = montant_restant(operation)
         if montant > restant:
@@ -285,6 +332,11 @@ def enregistrer_paiement(
             idUser=user,
             evenement=HistoriqueAchat.Evenement.PAIEMENT,
             referenceOperation=paiement.reference or str(paiement.public_id),
-            details={"montant": str(montant), "mode": mode, "date": str(date)},
+            details={
+                "montant": str(montant),
+                "mode": mode,
+                "date": str(date),
+                "typePaiement": type_paiement,
+            },
         )
     return paiement

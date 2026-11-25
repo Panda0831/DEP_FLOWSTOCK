@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import transaction
 from django.db.models import Sum
 from rest_framework.exceptions import ValidationError
@@ -223,6 +225,7 @@ def retourner_achat(*, achat, items, user, date, motif=""):
     if achat.statut in (Achat.Statut.ANNULE, Achat.Statut.EN_ATTENTE):
         raise ValidationError({"detail": "Seul un achat déjà réceptionné peut faire l'objet d'un retour."})
     produits_vus = set()
+    montant_avoir = Decimal("0.00")
     for item in items:
         public_id = item["product"]
         if public_id in produits_vus:
@@ -249,6 +252,7 @@ def retourner_achat(*, achat, items, user, date, motif=""):
         quantite = item["quantity"]
         if quantite_retournee_ligne + quantite > recu:
             raise ValidationError({"items": "Le retour dépasserait la quantité reçue pour ce produit."})
+        montant_avoir += ligne.prixUnitaire * quantite
         produit = Produit.objects.select_for_update().get(pk=ligne.idProduit_id)
         if stock_actuel(produit) < quantite:
             raise ValidationError({"items": f"Stock insuffisant pour retourner {produit.nomProduit}."})
@@ -267,6 +271,11 @@ def retourner_achat(*, achat, items, user, date, motif=""):
         idUser=user,
         evenement=HistoriqueAchat.Evenement.RETOUR_FOURNISSEUR,
         referenceOperation=achat.reference,
-        details={"line_count": len(items), "date": str(date), "motif": motif},
+        details={
+            "line_count": len(items),
+            "date": str(date),
+            "motif": motif,
+            "montant_avoir": str(montant_avoir),
+        },
     )
     return achat
