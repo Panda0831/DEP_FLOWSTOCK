@@ -350,7 +350,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   monthButtonText: { color: t.tint, fontSize: 24, lineHeight: 28, fontWeight: '600' },
   monthTitle: { color: t.text, fontSize: 16, fontWeight: '600', textTransform: 'capitalize' },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  weekday: { width: '14.2857%', height: 36, textAlign: 'center', textAlignVertical: 'center', color: t.secondaryText, fontSize: 12, fontWeight: '600' },
+  weekday: { width: '14.2857%', minHeight: 40, textAlign: 'center', textAlignVertical: 'center', color: t.secondaryText, fontSize: 14, fontWeight: '600' },
   dayCell: { width: '14.2857%', height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
   dayText: { color: t.text, fontSize: 14 },
   todayText: { color: t.tint, fontWeight: '800' },
