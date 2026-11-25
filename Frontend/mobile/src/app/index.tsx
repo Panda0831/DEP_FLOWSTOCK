@@ -15,7 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/lib/auth-context';
-import { getRememberedEmail, requestPasswordReset, setRememberedEmail } from '@/lib/session-api';
+import { ApiError, getRememberedEmail, requestPasswordReset, setRememberedEmail } from '@/lib/session-api';
 import { BrandLockup } from '@/components/brand-lockup';
 import { BrandDivider, FadeIn, MotionPressable } from '@/components/motion';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
@@ -108,6 +108,7 @@ export default function HomeScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [messageIsSuccess, setMessageIsSuccess] = useState(false);
+  const [loginLocked, setLoginLocked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -140,12 +141,18 @@ export default function HomeScreen() {
 
     setMessage('');
     setMessageIsSuccess(false);
+    setLoginLocked(false);
     setIsLoading(true);
     try {
       await signIn(email.trim(), password);
       try { await setRememberedEmail(rememberMe ? email.trim() : null); } catch { /* Login should not fail if local storage is unavailable. */ }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Connexion impossible. Réessayez.');
+      if (error instanceof ApiError && error.status === 429) {
+        setMessage(error.message);
+        setLoginLocked(true);
+      } else {
+        setMessage(error instanceof Error ? error.message : 'Connexion impossible. Réessayez.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -166,6 +173,7 @@ export default function HomeScreen() {
 
     setIsLoading(true);
     setMessage('');
+    setLoginLocked(false);
     try {
       const result = await requestPasswordReset(email.trim());
       setMessage(result.detail);
@@ -213,6 +221,7 @@ export default function HomeScreen() {
                 onChangeText={(value) => {
                   setEmail(value);
                   setMessage('');
+                  setLoginLocked(false);
                 }}
                 keyboardType="email-address"
                 autoComplete="email"
@@ -225,6 +234,7 @@ export default function HomeScreen() {
                 onChangeText={(value) => {
                   setPassword(value);
                   setMessage('');
+                  setLoginLocked(false);
                 }}
                 secureTextEntry={!showPassword}
                 autoComplete="password"
@@ -263,9 +273,17 @@ export default function HomeScreen() {
               </View>
 
               {!!message && (
-                <Text style={[styles.message, messageIsSuccess && styles.successMessage]}>
+                <Text
+                  accessibilityRole={loginLocked ? 'alert' : undefined}
+                  accessibilityLiveRegion={loginLocked ? 'polite' : 'none'}
+                  style={[styles.message, messageIsSuccess && styles.successMessage]}>
                   {message}
                 </Text>
+              )}
+              {loginLocked && (
+                <MotionPressable onPress={handleForgotPassword} style={styles.lockoutAction} accessibilityRole="button">
+                  <Text style={styles.lockoutActionText}>Réinitialiser mon mot de passe</Text>
+                </MotionPressable>
               )}
 
               <MotionPressable
@@ -323,7 +341,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     borderRadius: 120,
     backgroundColor: t.background,
     bottom: -175,
-    right: -135,
+    right: 0,
   },
   brand: { alignItems: 'center', marginBottom: 26 },
   form: { gap: 15 },
@@ -370,10 +388,12 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   checkbox: { width: 18, height: 18, borderWidth: 1.5, borderColor: t.separator, borderRadius: 5, backgroundColor: t.surface, alignItems: 'center', justifyContent: 'center' },
   checkboxChecked: { backgroundColor: t.tint, borderColor: t.tint },
   checkboxMark: { color: t.onTint, fontSize: 12, fontWeight: '900', lineHeight: 14 },
-  rememberText: { color: t.secondaryText, fontSize: 12, fontWeight: '600' },
+  rememberText: { color: t.secondaryText, fontSize: 14, lineHeight: 20, fontWeight: '600' },
   forgotButton: { paddingVertical: 2 },
   forgotText: { color: t.tint, fontWeight: '600', fontSize: 14 },
-  message: { color: t.danger, fontSize: 13, lineHeight: 18, marginTop: -4, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: t.dangerSurface, borderRadius: 11 },
+  message: { color: t.danger, fontSize: 14, lineHeight: 21, marginTop: -4, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: t.dangerSurface, borderRadius: 11 },
+  lockoutAction: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
+  lockoutActionText: { color: t.tint, fontSize: 14, lineHeight: 20, fontWeight: '700' },
   successMessage: { color: t.tint, backgroundColor: t.tintSurface },
   disabled: { opacity: 0.72 },
   primaryButton: {
