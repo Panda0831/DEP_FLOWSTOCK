@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { api, fetchAll, type Client, type Commande, type Delivery, type Produit } from '@/lib/session-api';
@@ -9,6 +9,7 @@ import { MotionPressable } from '@/components/motion';
 import { OptionSelect, toOptions } from '@/components/option-select';
 import { orderDisplayName } from '@/lib/order-display';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
+import { ScreenState } from '@/components/screen-state';
 
 export default function NewDeliveryScreen() {
   const t = useAppTheme();
@@ -78,7 +79,7 @@ export default function NewDeliveryScreen() {
 
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Nouvelle livraison" subtitle="Choisissez une commande confirmée, vérifiez le client puis créez le suivi." />
-    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : <View style={ui.card}>
+    {loading ? <ScreenState type="loading" title="Chargement des commandes disponibles…" compact /> : <View style={ui.card}>
       {availableOrders.length
         ? <OptionSelect
             label="Commande à livrer"

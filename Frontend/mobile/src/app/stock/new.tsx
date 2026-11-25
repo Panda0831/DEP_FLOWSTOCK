@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { api, fetchAll, type Produit, type Stock } from '@/lib/session-api';
@@ -9,6 +9,7 @@ import { AppPageHeading } from '@/components/page-heading';
 import { OptionSelect, toOptions } from '@/components/option-select';
 import { QuantityField } from '@/components/quantity-field';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
+import { ScreenState } from '@/components/screen-state';
 
 export default function NewStockMovementScreen() {
   const t = useAppTheme();
@@ -73,7 +74,13 @@ export default function NewStockMovementScreen() {
 
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Mouvement de stock" subtitle="Choisissez un produit, puis enregistrez une entrée ou une perte." />
-    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : !products.length ? <View style={ui.card}>
+    {loading ? <ScreenState type="loading" title="Chargement du catalogue…" compact /> : !!error && !products.length ? <ScreenState
+      type="error"
+      title="Le catalogue n’a pas pu être chargé."
+      description={error}
+      actionLabel="Réessayer"
+      onAction={() => void load()}
+    /> : !products.length ? <View style={ui.card}>
       <Text style={styles.formTitle}>Ajoutez d’abord un produit</Text>
       <Text style={styles.formHint}>Un mouvement de stock doit être associé à un produit du catalogue.</Text>
       <Action label="Ajouter un produit" onPress={() => router.push({ pathname: '/products', params: { add: '1' } })} />

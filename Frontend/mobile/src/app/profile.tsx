@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { changeMyPassword, updateMyProfile } from '@/lib/session-api';
 import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
-import { FadeIn, MotionPressable } from '@/components/motion';
+import { MotionPressable } from '@/components/motion';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 function getInitials(name: string, email: string) {
@@ -77,8 +77,7 @@ export default function ProfileScreen() {
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Mon compte" subtitle="Gérez vos informations personnelles et votre sécurité." />
 
-    <FadeIn delay={100}>
-      <View style={styles.identityCard}>
+    <View style={styles.identityCard}>
         <View style={styles.identityTop}>
           <View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text></View>
           <View style={styles.identityCopy}>
@@ -92,14 +91,12 @@ export default function ProfileScreen() {
           <Text style={styles.identityFooterLabel}>Compte FlowStock</Text>
           <Text style={styles.identityFooterValue}>Actif</Text>
         </View>
-      </View>
-    </FadeIn>
+    </View>
 
-    {!!error && <FadeIn><View accessibilityRole="alert" style={styles.messageError}><Text style={styles.messageErrorMark}>!</Text><Text style={styles.messageText}>{error}</Text></View></FadeIn>}
-    {!!notice && <FadeIn><View accessibilityLiveRegion="polite" style={styles.messageSuccess}><Text style={styles.messageSuccessMark}>✓</Text><Text style={styles.messageText}>{notice}</Text></View></FadeIn>}
+    {!!error && <View accessibilityRole="alert" style={styles.messageError}><Text style={styles.messageErrorMark}>!</Text><Text style={styles.messageText}>{error}</Text></View>}
+    {!!notice && <View accessibilityLiveRegion="polite" style={styles.messageSuccess}><Text style={styles.messageSuccessMark}>✓</Text><Text style={styles.messageText}>{notice}</Text></View>}
 
-    <FadeIn delay={150}>
-      <View style={styles.formCard}>
+    <View style={styles.formCard}>
         <View style={styles.cardHeading}>
           <View style={[styles.cardIcon, styles.profileIcon]}><Text style={styles.profileIconText}>✦</Text></View>
           <View style={styles.cardHeadingCopy}>
@@ -118,11 +115,9 @@ export default function ProfileScreen() {
           returnKeyType="done"
         />
         <Action label={busy ? 'Enregistrement…' : 'Enregistrer'} onPress={() => void saveProfile()} disabled={busy || !nomComplet.trim()} />
-      </View>
-    </FadeIn>
+    </View>
 
-    <FadeIn delay={210}>
-      <View style={styles.formCard}>
+    <View style={styles.formCard}>
         <View style={styles.cardHeading}>
           <View style={[styles.cardIcon, styles.securityIcon]}><Text style={styles.securityIconText}>⌑</Text></View>
           <View style={styles.cardHeadingCopy}>
@@ -137,11 +132,9 @@ export default function ProfileScreen() {
         <Text style={styles.fieldLabel}>Confirmation</Text>
         <TextInput style={styles.input} value={confirmation} onChangeText={setConfirmation} secureTextEntry placeholder="Confirmez le nouveau mot de passe" placeholderTextColor={t.secondaryText} autoComplete="new-password" textContentType="newPassword" />
         <Action label={busy ? 'Enregistrement…' : 'Enregistrer'} onPress={() => void savePassword()} disabled={busy || !ancien || !nouveau || nouveau !== confirmation} />
-      </View>
-    </FadeIn>
+    </View>
 
-    <FadeIn delay={270}>
-      <View style={styles.signOutCard}>
+    <View style={styles.signOutCard}>
         <View style={styles.signOutCopy}>
           <Text style={styles.signOutTitle}>Déconnexion</Text>
           <Text style={styles.signOutDescription}>Terminez votre session sur cet appareil.</Text>
@@ -149,8 +142,7 @@ export default function ProfileScreen() {
         <MotionPressable onPress={() => setConfirmDisconnect(true)} disabled={busy} style={[styles.signOutButton, busy && styles.disabled]} accessibilityRole="button">
           {busy ? <ActivityIndicator color={t.danger} /> : <Text style={styles.signOutText}>Se déconnecter</Text>}
         </MotionPressable>
-      </View>
-    </FadeIn>
+    </View>
 
     <Modal visible={confirmDisconnect} transparent animationType="fade" onRequestClose={() => setConfirmDisconnect(false)}>
       <View style={styles.modalBackdrop}>
@@ -208,7 +200,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   signOutCopy: { flex: 1 },
   signOutTitle: { color: t.text, fontSize: 14, fontWeight: '800' },
   signOutDescription: { color: t.secondaryText, fontSize: 14, marginTop: 4, lineHeight: 21 },
-  signOutButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 11, backgroundColor: t.dangerSurface, borderWidth: 1, borderColor: t.danger },
+  signOutButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 11, backgroundColor: t.dangerSurface, borderWidth: 1, borderColor: t.danger },
   signOutText: { color: t.danger, fontSize: 14, lineHeight: 20, fontWeight: '800' },
   disabled: { opacity: 0.55 },
   modalBackdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.55)' },

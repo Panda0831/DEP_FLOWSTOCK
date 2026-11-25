@@ -1,68 +1,6 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://unistyl.es/), etc.
- */
-
 import '@/global.css';
 
 import { Platform } from 'react-native';
-
-export const Colors = {
-  light: {
-    text: '#18332F',
-    background: '#F3F7F5',
-    backgroundElement: '#FFFFFF',
-    backgroundSelected: '#E5F2EF',
-    textSecondary: '#526864',
-  },
-  dark: {
-    text: '#EFF6F3',
-    background: '#101917',
-    backgroundElement: '#1B2623',
-    backgroundSelected: '#203B35',
-    textSecondary: '#B0C0BA',
-  },
-} as const;
-
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
-
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
-} as const;
-
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
 
 /**
  * Semantic tokens used by the shared components.
@@ -102,6 +40,70 @@ export const AppColors = {
 
 export type AppTheme = { [K in keyof (typeof AppColors)['light']]: string };
 
+/** Compatibility names for the remaining themed starter components. */
+export const Colors = {
+  light: {
+    text: AppColors.light.text,
+    background: AppColors.light.background,
+    backgroundElement: AppColors.light.surface,
+    backgroundSelected: AppColors.light.tintSurface,
+    textSecondary: AppColors.light.secondaryText,
+  },
+  dark: {
+    text: AppColors.dark.text,
+    background: AppColors.dark.background,
+    backgroundElement: AppColors.dark.surface,
+    backgroundSelected: AppColors.dark.tintSurface,
+    textSecondary: AppColors.dark.secondaryText,
+  },
+} as const;
+
+export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+
+export const Fonts = Platform.select({
+  ios: {
+    /** iOS `UIFontDescriptorSystemDesignDefault` */
+    sans: 'system-ui',
+    /** iOS `UIFontDescriptorSystemDesignSerif` */
+    serif: 'ui-serif',
+    /** iOS `UIFontDescriptorSystemDesignRounded` */
+    rounded: 'ui-rounded',
+    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
+    mono: 'ui-monospace',
+  },
+  default: {
+    sans: 'sans-serif',
+    serif: 'serif',
+    rounded: 'normal',
+    mono: 'monospace',
+  },
+  web: {
+    sans: 'var(--font-display)',
+    serif: 'var(--font-serif)',
+    rounded: 'var(--font-rounded)',
+    mono: 'var(--font-mono)',
+  },
+});
+
+export const Spacing = {
+  half: 2,
+  one: 4,
+  two: 8,
+  three: 16,
+  four: 24,
+  five: 32,
+  six: 64,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+} as const;
+
+export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+export const MaxContentWidth = 800;
+
 export const Type = {
   title: { fontSize: 28, lineHeight: 34, fontWeight: '700' as const },
   headline: { fontSize: 17, lineHeight: 22, fontWeight: '600' as const },
@@ -110,5 +112,5 @@ export const Type = {
   caption: { fontSize: 13, lineHeight: 18, fontWeight: '500' as const },
 };
 
-export const Radius = { control: 12, card: 16 } as const;
+export const Radius = { control: 12, card: 16, sheet: 24 } as const;
 export const HitSize = 44;

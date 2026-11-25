@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -9,6 +9,7 @@ import { api, type Stock } from '@/lib/session-api';
 import { AppPageHeading } from '@/components/page-heading';
 import { MotionPressable } from '@/components/motion';
 import { ProfitTrendChart, type ProfitTrendPoint } from '@/components/profit-trend-chart';
+import { ScreenState } from '@/components/screen-state';
 import { HitSize, Radius, Type } from '@/constants/theme';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
@@ -47,7 +48,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   alertName: { color: t.text, fontSize: 15, fontWeight: '600', flex: 1 },
   alertQty: { color: t.warning, fontSize: 14, fontWeight: '700' },
   alertCopy: { flex: 1, minWidth: 0 },
-  restockButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 11, borderWidth: 1, borderColor: t.separator, borderRadius: Radius.control, backgroundColor: t.surface },
+  restockButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 11, borderWidth: 1, borderColor: t.separator, borderRadius: Radius.control, backgroundColor: t.surface },
   restockButtonText: { color: t.tint, fontSize: 14, lineHeight: 20, fontWeight: '700' },
   empty: { color: t.secondaryText, fontSize: 15, padding: 20 },
   lowerLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -125,7 +126,7 @@ export default function HomeScreen() {
     await Promise.all([refresh(), refreshProfitTrend()]);
   }, [refresh, refreshProfitTrend]);
 
-  if (!isReady || !user) return <SafeAreaView style={styles.page}><ActivityIndicator color={t.tint} style={styles.loader} /></SafeAreaView>;
+  if (!isReady || !user) return <SafeAreaView style={styles.page}><ScreenState type="loading" title="Préparation de votre espace…" /></SafeAreaView>;
 
   const totalUnits = items.reduce((sum, item) => sum + Number(item.stock || 0), 0);
   const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -143,8 +144,14 @@ export default function HomeScreen() {
             <Text style={styles.accountText}>Mon compte</Text>
           </MotionPressable>
         </View>
-        {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-        {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : <>
+        {loading ? <ScreenState type="loading" title="Chargement de votre stock…" compact />
+          : !!error ? <ScreenState
+            type="error"
+            title="Le stock n’a pas pu être actualisé."
+            description={error}
+            actionLabel="Réessayer"
+            onAction={() => void refreshDashboard()}
+          /> : <>
           <View style={styles.statGrid}>
             <View style={styles.stat}>
               <Text style={styles.statLabel}>Références en stock</Text>
@@ -185,7 +192,13 @@ export default function HomeScreen() {
               <Text style={styles.panelTitle}>Stock à surveiller</Text>
               <MotionPressable onPress={() => router.push('/stock')} accessibilityRole="link"><Text style={styles.seeAll}>Voir le stock</Text></MotionPressable>
             </View>
-            {alerts.length === 0 ? <Text style={styles.empty}>Tout est en ordre. Aucun produit n’a atteint son seuil d’alerte.</Text> : alerts.slice(0, 5).map((item, index) => (
+            {alerts.length === 0 ? <ScreenState
+              type="success"
+              title={items.length ? 'Aucun réapprovisionnement à prévoir.' : 'Votre stock apparaîtra ici.'}
+              description={items.length ? 'Tous les produits sont au-dessus de leur seuil d’alerte.' : 'Ajoutez des produits et enregistrez leurs premières quantités.'}
+              actionLabel={!items.length && isAdmin ? 'Ajouter un produit' : undefined}
+              onAction={!items.length && isAdmin ? () => router.push({ pathname: '/products', params: { add: '1' } }) : undefined}
+            /> : alerts.slice(0, 5).map((item, index) => (
               <View key={item.public_id} style={[styles.alertRow, index === Math.min(alerts.length, 5) - 1 && { borderBottomWidth: 0 }]}>
                 <View style={styles.alertDot} />
                 <View style={styles.alertCopy}>

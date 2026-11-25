@@ -16,7 +16,7 @@ export default function SignupScreen() {
       <BrandLockup variant="hero" />
       <BrandDivider style={styles.divider} />
       <View style={styles.copyBlock}>
-        <Text style={styles.eyebrow}>ACCÈS À L’ESPACE</Text>
+        <Text style={styles.eyebrow}>Accès à votre espace</Text>
         <Text style={styles.title}>Demander un accès</Text>
         <Text style={styles.copy}>Les comptes sont créés par un administrateur FlowStock. Contactez l’administrateur de votre espace pour recevoir vos identifiants.</Text>
       </View>
@@ -32,8 +32,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   card: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: t.surface, borderRadius: 24, padding: 28, borderWidth: 1, borderColor: t.separator, shadowColor: '#38704A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 20, elevation: 3 },
   copyBlock: { marginTop: 12 },
   divider: { marginTop: 20 },
-  eyebrow: { color: t.tint, fontSize: 12, lineHeight: 17, fontWeight: '800', letterSpacing: 0.6, textAlign: 'center' },
-  title: { color: t.text, fontSize: 27, fontWeight: '800', marginTop: 9, textAlign: 'center' },
+  eyebrow: { color: t.tint, fontSize: 13, lineHeight: 18, fontWeight: '600', textAlign: 'center' },
+  title: { color: t.text, fontSize: 27, fontWeight: '700', marginTop: 9, textAlign: 'center' },
   copy: { color: t.secondaryText, fontSize: 14, lineHeight: 22, marginTop: 11, textAlign: 'center' },
   button: { minHeight: 52, borderRadius: 14, backgroundColor: t.tint, justifyContent: 'center', alignItems: 'center', marginTop: 24 },
   buttonText: { color: t.onTint, fontSize: 14, fontWeight: '700' },

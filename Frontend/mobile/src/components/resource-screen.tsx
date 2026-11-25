@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { api, fetchAll } from '@/lib/session-api';
@@ -10,6 +10,7 @@ import { AppPageHeading } from '@/components/page-heading';
 import { OptionSelect } from '@/components/option-select';
 import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
 import { FormDisclosure, useAutoOpenForm } from '@/components/form-disclosure';
+import { ScreenState } from '@/components/screen-state';
 import type { SelectOption } from '@/components/option-select';
 
 export type ResourceOption = { value: string; label: string };
@@ -261,9 +262,24 @@ export function ResourceScreen({ title, subtitle, endpoint, fields, titleKey, su
           pageSize={6}
         />)}
       </FormDisclosure>}
-      {!!error && !formOpen && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-      {loading ? <ActivityIndicator color={t.tint} style={styles.loader} />
-        : orderedItems.length === 0 ? <Text style={styles.empty}>{items.length ? 'Aucun résultat pour cette recherche ou ces filtres.' : emptyText}</Text>
+      {!!error && formOpen && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+      {loading ? <ScreenState type="loading" title={`Chargement de ${title.toLocaleLowerCase('fr-FR')}…`} compact />
+        : !!error && items.length === 0 ? <ScreenState
+          type="error"
+          title={`Impossible de charger ${title.toLocaleLowerCase('fr-FR')}.`}
+          description={error}
+          actionLabel="Réessayer"
+          onAction={() => void refresh()}
+        />
+        : orderedItems.length === 0 ? <ScreenState
+          type="empty"
+          title={items.length ? 'Aucun résultat' : emptyText}
+          description={items.length ? 'Modifiez la recherche ou les filtres pour afficher des éléments.' : undefined}
+          actionLabel={items.length ? 'Effacer la recherche et les filtres' : canEdit ? `Ajouter ${title.toLocaleLowerCase('fr-FR')}` : undefined}
+          onAction={items.length
+            ? () => { setQuery(''); setFilterValues({}); setPage(1); }
+            : canEdit ? startCreate : undefined}
+        />
         : orderedItems.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE).map((item) => {
           const metric = itemMetric?.(item);
           return <View key={item.public_id} style={styles.row}>

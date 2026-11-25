@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { AccessibilityInfo, Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import Svg, { Line, Path } from 'react-native-svg';
 
 import { Radius, Type } from '@/constants/theme';
@@ -109,7 +109,7 @@ export function ProfitTrendChart({ points }: { points: ProfitTrendPoint[] }) {
         toValue: 1,
         duration: 420,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       });
       animation.start();
     };

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api, fetchAll, type Movement, type Produit, type Stock } from '@/lib/session-api';
 import { useAuth } from '@/lib/auth-context';
@@ -7,6 +7,8 @@ import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
 import { FadeIn, MotionPressable } from '@/components/motion';
 import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
+import { ScreenState } from '@/components/screen-state';
+import { Radius } from '@/constants/theme';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 const MOVEMENTS_PER_PAGE = 15;
@@ -128,16 +130,28 @@ export default function StockScreen() {
 
     {admin && <View style={styles.createRow}><Action label="Nouveau mouvement" onPress={() => router.push('/stock/new')} /></View>}
 
-    {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+    {!!error && <ScreenState
+      type="error"
+      title="Le stock n’a pas pu être actualisé."
+      description={error}
+      actionLabel="Réessayer"
+      onAction={() => void load()}
+      compact
+    />}
 
     <View style={styles.sectionHeading}>
       <View><Text style={styles.sectionTitle}>État du stock</Text><Text style={styles.sectionHint}>Les références sous le seuil sont signalées avec une alerte.</Text></View>
       <Pressable onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Actualiser le stock"><Text style={styles.refresh}>Actualiser</Text></Pressable>
     </View>
-    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : items.length === 0 ? <Text style={styles.empty}>Aucun niveau de stock à afficher.</Text> : orderedItems.slice((stockPage - 1) * LIST_PAGE_SIZE, stockPage * LIST_PAGE_SIZE).map((item, index) => {
+    {loading ? <ScreenState type="loading" title="Chargement des niveaux de stock…" compact /> : error ? null : items.length === 0 ? <ScreenState
+      type="empty"
+      title="Aucun niveau de stock."
+      description="Ajoutez des produits pour commencer à suivre les quantités disponibles."
+      actionLabel={admin ? 'Ajouter un produit' : undefined}
+      onAction={admin ? () => router.push({ pathname: '/products', params: { add: '1' } }) : undefined}
+    /> : orderedItems.slice((stockPage - 1) * LIST_PAGE_SIZE, stockPage * LIST_PAGE_SIZE).map((item) => {
       const isLow = item.stock <= item.seuilAlerte;
-      return <FadeIn key={item.public_id} delay={Math.min(index * 35, 280)}>
-        <View style={styles.stockRow}>
+      return <View key={item.public_id} style={styles.stockRow}>
           <View style={styles.stockInfo}>
             {admin
               ? <MotionPressable onPress={() => router.push({ pathname: '/products', params: { focus: item.public_id, open: '1' } })} accessibilityRole="link" accessibilityLabel={`Gérer ${item.nomProduit}`}><Text style={styles.productName}>{item.nomProduit} ›</Text></MotionPressable>
@@ -155,8 +169,7 @@ export default function StockScreen() {
             accessibilityLabel={`Créer un achat pour réapprovisionner ${item.nomProduit}`}>
             <Text style={styles.restockButtonText}>Commander</Text>
           </MotionPressable>}
-        </View>
-      </FadeIn>;
+        </View>;
     })}
     {!loading && <PageNavigation page={stockPage} totalItems={items.length} onPageChange={setStockPage} />}
 
@@ -186,7 +199,19 @@ export default function StockScreen() {
         <Text style={[styles.filterText, movementFilter === value && styles.filterTextActive]}>{label}</Text>
       </Pressable>)}
     </View>
-    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : moves.length === 0 ? <Text style={styles.empty}>Aucun mouvement enregistré.</Text> : filteredMoves.length === 0 ? <Text style={styles.empty}>Aucun mouvement ne correspond à ces critères.</Text> : visibleMoves.map((move) => {
+    {loading ? <ScreenState type="loading" title="Chargement de l’historique…" compact /> : error ? null : moves.length === 0 ? <ScreenState
+      type="empty"
+      title="Aucun mouvement enregistré."
+      description="Les entrées, ventes et corrections apparaîtront ici."
+      actionLabel={admin ? 'Nouveau mouvement' : undefined}
+      onAction={admin ? () => router.push('/stock/new') : undefined}
+    /> : filteredMoves.length === 0 ? <ScreenState
+      type="empty"
+      title="Aucun mouvement correspondant."
+      description="Modifiez votre recherche ou choisissez un autre filtre."
+      actionLabel="Effacer les filtres"
+      onAction={() => { setMovementQuery(''); setMovementFilter('all'); setMovePage(1); }}
+    /> : visibleMoves.map((move) => {
       const isEntry = isStockIncrease(move.typeMouvement);
       const isLoss = move.typeMouvement === 'perte';
       const productName = products.find((item) => item.public_id === move.produit)?.nomProduit || `Produit ${move.produit.slice(0, 8)}`;
@@ -212,7 +237,7 @@ export default function StockScreen() {
 
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 22 },
-  summaryCard: { flexGrow: 1, flexBasis: 145, minHeight: 108, backgroundColor: t.surface, borderWidth: 1, borderColor: t.separator, borderRadius: 16, padding: 15 },
+  summaryCard: { flexGrow: 1, flexBasis: 145, minHeight: 108, backgroundColor: t.surface, borderWidth: 1, borderColor: t.separator, borderRadius: Radius.card, padding: 15 },
   alertSummaryCard: { borderColor: t.warningSurface, backgroundColor: t.warningSurface },
   summaryLabel: { color: t.secondaryText, fontSize: 14, lineHeight: 20, fontWeight: '600' },
   summaryValue: { color: t.text, fontSize: 24, fontWeight: '700', marginTop: 8 },
@@ -238,12 +263,12 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   lowValue: { color: t.danger },
   stockStatus: { color: t.tint, fontWeight: '600', fontSize: 13, marginTop: 1 },
   lowStatus: { color: t.danger },
-  restockButton: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 10, borderWidth: 1, borderColor: t.separator, borderRadius: 12, backgroundColor: t.surface },
+  restockButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 10, borderWidth: 1, borderColor: t.separator, borderRadius: Radius.control, backgroundColor: t.surface },
   restockButtonText: { color: t.tint, fontSize: 14, lineHeight: 20, fontWeight: '700' },
   historyHeading: { marginTop: 20 },
   searchInput: { minHeight: 48, borderWidth: 1, borderColor: t.separator, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, color: t.text, backgroundColor: t.surface, marginBottom: 8 },
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  filterButton: { minHeight: 40, minWidth: 74, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 13, borderWidth: 1, borderColor: t.separator, borderRadius: 20, backgroundColor: t.surface },
+  filterButton: { minHeight: 44, minWidth: 74, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 13, borderWidth: 1, borderColor: t.separator, borderRadius: 20, backgroundColor: t.surface },
   filterButtonActive: { borderColor: t.tint, backgroundColor: t.tintSurface },
   filterText: { color: t.secondaryText, fontSize: 13, fontWeight: '600' },
   filterTextActive: { color: t.tint },

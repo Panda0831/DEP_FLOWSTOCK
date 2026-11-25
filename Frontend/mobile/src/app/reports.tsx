@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -10,6 +10,7 @@ import { AppPageHeading } from '@/components/page-heading';
 import { FadeIn, MotionPressable } from '@/components/motion';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
+import { ScreenState } from '@/components/screen-state';
 
 type Summary = {
   chiffre_affaires: string;
@@ -222,7 +223,11 @@ export default function ReportsScreen() {
 
   return <ScrollView style={[ui.page, { backgroundColor: t.background }]} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Rapports" subtitle="Voyez ce que les ventes rapportent et ce qui réduit le résultat." />
-    {!admin ? <Text style={styles.error}>Les rapports financiers sont réservés aux administrateurs.</Text> : <>
+    {!admin ? <ScreenState
+      type="error"
+      title="Accès réservé aux administrateurs."
+      description="Les rapports financiers ne sont pas disponibles pour ce compte."
+    /> : <>
       <FadeIn delay={130}><View style={styles.periodCard}>
         <View style={styles.periodHeading}><View style={styles.periodIcon}><Text style={styles.periodIconText}>⌁</Text></View><View><Text style={styles.periodTitle}>Période du rapport</Text><Text style={styles.periodCaption}>Choisissez les dates à analyser.</Text></View></View>
         <View style={styles.presetRow}>
@@ -262,8 +267,8 @@ export default function ReportsScreen() {
         onSelect={(value) => selectDate(calendarField, value)}
         onClose={() => setCalendarField(null)}
       />}
-      {!!error && <Text style={styles.error}>{error}</Text>}
-      {loading && !summary ? <ActivityIndicator color={t.tint} style={{ margin: 20 }} /> : null}
+      {!!error && <ScreenState type="error" title="Le rapport n’a pas pu être actualisé." description={error} actionLabel="Réessayer" onAction={() => void load()} compact />}
+      {loading && !summary ? <ScreenState type="loading" title="Chargement du rapport…" compact /> : null}
       {summary && <>
         <FadeIn delay={180}><View style={styles.grid}>{[
           ['Ventes', summary.chiffre_affaires], ['Reste après produits et livraison', summary.benefice_brut],
@@ -297,7 +302,7 @@ export default function ReportsScreen() {
         </View>
         <View style={styles.chartCard}>
           <View style={styles.chartHeading}><View><Text style={styles.sectionTitle}>Ventes par produit</Text><Text style={styles.chartCaption}>Montant des produits vendus</Text></View><Text style={styles.chartUnit}>AR</Text></View>
-          {products.length === 0 ? <Text style={styles.empty}>Aucune vente sur cette période.</Text> : sortedProducts.slice((productPage - 1) * LIST_PAGE_SIZE, productPage * LIST_PAGE_SIZE).map((item) => {
+          {products.length === 0 ? <ScreenState type="empty" title="Aucune vente sur cette période." description="Essayez une autre période pour consulter les produits vendus." /> : sortedProducts.slice((productPage - 1) * LIST_PAGE_SIZE, productPage * LIST_PAGE_SIZE).map((item) => {
             const share = Math.max(5, Number(item.chiffre_affaires) / maxProductSales * 100);
             return <MotionPressable key={item.idProduit__public_id} style={styles.chartRow} onPress={() => router.push({ pathname: '/products', params: { focus: item.idProduit__public_id, open: '1' } })} accessibilityRole="link" accessibilityLabel={`Gérer le produit ${item.idProduit__nomProduit}`}>
               <View style={styles.chartMeta}><Text style={styles.chartName} numberOfLines={1}>{item.idProduit__nomProduit}</Text><Text style={styles.chartAmount}>{Number(item.chiffre_affaires).toLocaleString('fr-FR')} Ar</Text></View>
@@ -309,7 +314,7 @@ export default function ReportsScreen() {
         </View>
         <View style={styles.chartCard}>
           <View style={styles.chartHeading}><View><Text style={styles.sectionTitle}>Commandes livrées</Text><Text style={styles.chartCaption}>Ventes terminées sur la période</Text></View><Text style={styles.chartUnit}>{orders.length}</Text></View>
-          {orders.length === 0 ? <Text style={styles.empty}>Aucune commande livrée sur cette période.</Text> : orders.slice((orderPage - 1) * LIST_PAGE_SIZE, orderPage * LIST_PAGE_SIZE).map((item) => <MotionPressable key={item.public_id} style={styles.row} onPress={() => router.push({ pathname: '/orders/[id]', params: { id: item.public_id } })} accessibilityRole="link" accessibilityLabel={`Gérer la commande de ${item.client}`}>
+          {orders.length === 0 ? <ScreenState type="empty" title="Aucune commande livrée sur cette période." description="Les ventes terminées apparaîtront ici." /> : orders.slice((orderPage - 1) * LIST_PAGE_SIZE, orderPage * LIST_PAGE_SIZE).map((item) => <MotionPressable key={item.public_id} style={styles.row} onPress={() => router.push({ pathname: '/orders/[id]', params: { id: item.public_id } })} accessibilityRole="link" accessibilityLabel={`Gérer la commande de ${item.client}`}>
             <View style={{ flex: 1 }}><Text style={styles.name}>{item.client}</Text><Text style={styles.sub}>{item.date_livraison}</Text></View>
             <View style={styles.orderAmount}><Text style={styles.amountValue}>{Number(item.chiffre_affaires).toLocaleString('fr-FR')} Ar</Text><Text style={styles.sub}>Reste sur la commande : {Number(item.benefice).toLocaleString('fr-FR')} Ar</Text></View>
           </MotionPressable>)}
@@ -332,7 +337,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   periodCaption: { color: t.secondaryText, fontSize: 13, marginTop: 3 },
   fieldLabel: { color: t.text, fontSize: 13, fontWeight: '600', marginBottom: 6 },
   presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  presetButton: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 13, borderRadius: 20, borderWidth: 1, borderColor: t.separator, backgroundColor: t.surface },
+  presetButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 13, borderRadius: 20, borderWidth: 1, borderColor: t.separator, backgroundColor: t.surface },
   presetButtonActive: { backgroundColor: t.tintSurface, borderColor: t.tint },
   presetText: { color: t.secondaryText, fontSize: 13, fontWeight: '600' },
   presetTextActive: { color: t.tint },
@@ -346,12 +351,12 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   calendarTitle: { color: t.text, fontSize: 17, fontWeight: '700' },
   calendarClose: { color: t.tint, fontSize: 14, fontWeight: '600' },
   calendarMonth: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  monthButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: t.tintSurface },
+  monthButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: t.tintSurface },
   monthButtonText: { color: t.tint, fontSize: 24, lineHeight: 28, fontWeight: '600' },
   monthTitle: { color: t.text, fontSize: 16, fontWeight: '600', textTransform: 'capitalize' },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   weekday: { width: '14.2857%', minHeight: 40, textAlign: 'center', textAlignVertical: 'center', color: t.secondaryText, fontSize: 14, fontWeight: '600' },
-  dayCell: { width: '14.2857%', height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
+  dayCell: { width: '14.2857%', minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
   dayText: { color: t.text, fontSize: 14 },
   todayText: { color: t.tint, fontWeight: '800' },
   selectedDay: { backgroundColor: t.tint },

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
-import { AccessibilityInfo, Animated, Pressable, StyleSheet, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { AccessibilityInfo, Animated, Platform, Pressable, StyleSheet, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useAppTheme } from '@/hooks/use-app-theme';
 
 /** One short entrance fade. Never loops, and disabled when Reduce Motion is on. */
 export function FadeIn({ children, delay = 0, style }: PropsWithChildren<{ delay?: number; style?: StyleProp<ViewStyle> }>) {
-  const [reduced, setReduced] = useState(false);
+  const [reduced, setReduced] = useState(true);
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -25,7 +25,12 @@ export function FadeIn({ children, delay = 0, style }: PropsWithChildren<{ delay
       progress.setValue(1);
       return;
     }
-    const animation = Animated.timing(progress, { toValue: 1, duration: 220, delay: Math.min(delay, 120), useNativeDriver: true });
+    const animation = Animated.timing(progress, {
+      toValue: 1,
+      duration: 180,
+      delay: Math.min(delay, 80),
+      useNativeDriver: Platform.OS !== 'web',
+    });
     animation.start();
     return () => animation.stop();
   }, [delay, progress, reduced]);
@@ -44,7 +49,14 @@ type MotionPressableProps = Omit<PressableProps, 'style'> & { style?: StyleProp<
 
 /** Press feedback without scaling: predictable hit regions. */
 export function MotionPressable({ style, ...props }: MotionPressableProps) {
-  return <Pressable {...props} style={({ pressed }) => [style, pressed && styles.pressed]} />;
+  const t = useAppTheme();
+  return (
+    <Pressable
+      {...props}
+      android_ripple={Platform.OS === 'android' ? { color: t.tintSurface } : undefined}
+      style={({ pressed }) => [style, pressed && styles.pressed]}
+    />
+  );
 }
 
 const styles = StyleSheet.create({

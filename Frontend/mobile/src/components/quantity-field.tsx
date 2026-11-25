@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   wrap: { marginBottom: 14 },
   label: { ...Type.footnote, fontWeight: '600', marginBottom: 6 },
   control: { minHeight: HitSize, borderWidth: 1, borderRadius: Radius.control, flexDirection: 'row', alignItems: 'center', padding: 4 },
-  step: { width: 40, height: 40, borderWidth: 1, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  step: { minWidth: HitSize, minHeight: HitSize, borderWidth: 1, borderRadius: Radius.control, alignItems: 'center', justifyContent: 'center' },
   stepText: { fontSize: 20, lineHeight: 24, fontWeight: '600' },
   input: { flex: 1, minWidth: 48, textAlign: 'center', fontSize: 17, fontWeight: '600', paddingVertical: 6 },
   hint: { ...Type.footnote, marginTop: 5 },

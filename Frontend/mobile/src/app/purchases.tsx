@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
-import { FadeIn, MotionPressable } from '@/components/motion';
+import { MotionPressable } from '@/components/motion';
 import { FormDisclosure, useAutoOpenForm } from '@/components/form-disclosure';
 import { OptionSelect, toOptions } from '@/components/option-select';
 import { QuantityField } from '@/components/quantity-field';
@@ -11,6 +11,7 @@ import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
 import { useAuth } from '@/lib/auth-context';
 import { api, fetchAll, type Produit, type Fournisseur, type Purchase } from '@/lib/session-api';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
+import { ScreenState } from '@/components/screen-state';
 
 type DraftLine = { product: string; quantity: string; unit_price: string };
 const PAYMENT_MODES = [
@@ -297,7 +298,7 @@ export default function PurchasesScreen() {
         {editingPurchase && <MotionPressable onPress={() => { setEditingPurchase(null); setSupplier(''); setLines([]); setLocation(''); setDetailsOpen(false); }} style={styles.cancel}><Text style={styles.cancelText}>Annuler la modification</Text></MotionPressable>}
       </View>
     </FormDisclosure>}
-    {!!error && <Text style={ui.error}>{error}</Text>}
+    {!!error && <ScreenState type="error" title="Les achats n’ont pas pu être actualisés." description={error} actionLabel="Réessayer" onAction={() => void load()} compact />}
     {detailMode && <MotionPressable onPress={() => router.back()} style={styles.backLink} accessibilityRole="button"><Text style={styles.backText}>‹ Retour aux achats</Text></MotionPressable>}
     {!loading && focusedPurchase && <View style={styles.workflow}>
       <Text style={styles.workflowEyebrow}>{params.step === 'done' ? 'ACHAT TERMINÉ' : 'ÉTAPE SUIVANTE'}</Text>
@@ -326,8 +327,17 @@ export default function PurchasesScreen() {
         <OptionSelect label="Statut" options={PURCHASE_STATUSES} value={statusFilter} onChange={(value) => { setStatusFilter(value); setPurchasePage(1); }} optional pageSize={7} />
       </FormDisclosure>
     </>}
-    {loading ? <ActivityIndicator color={t.tint} style={{ marginVertical: 24 }} /> : purchases.length === 0 ? <Text style={ui.empty}>Aucun achat enregistré.</Text> : visiblePurchases.length === 0 ? <Text style={ui.empty}>Aucun achat ne correspond à ces filtres.</Text> : visiblePurchases.map((purchase, index) => <FadeIn key={purchase.public_id} delay={Math.min(index * 35, 280)}>
-      <View style={[styles.purchase, purchase.public_id === focusedId && styles.purchaseFocused]}>
+    {loading ? <ScreenState type="loading" title="Chargement des achats…" compact /> : error && purchases.length === 0 ? null : purchases.length === 0 ? <ScreenState
+      type="empty"
+      title="Aucun achat enregistré."
+      description="Les commandes fournisseur et leurs réceptions apparaîtront ici."
+    /> : visiblePurchases.length === 0 ? <ScreenState
+      type="empty"
+      title="Aucun achat correspondant."
+      description="Modifiez la recherche ou les filtres pour afficher des achats."
+      actionLabel="Effacer les filtres"
+      onAction={() => { setPurchaseSearch(''); setSupplierFilter(''); setProductFilter(''); setStatusFilter(''); setPurchasePage(1); }}
+    /> : visiblePurchases.map((purchase) => <View key={purchase.public_id} style={[styles.purchase, purchase.public_id === focusedId && styles.purchaseFocused]}>
         <View style={styles.purchaseHeader}><View style={{ flex: 1 }}>{detailMode
           ? <Text style={styles.purchaseTitle}>{purchase.reference}</Text>
           : <MotionPressable onPress={() => router.push({ pathname: '/purchases/[id]', params: { id: purchase.public_id } })} accessibilityRole="link" accessibilityLabel={`Gérer l’achat ${purchase.reference}`}><Text style={styles.purchaseTitle}>{purchase.reference} ›</Text></MotionPressable>}
@@ -388,8 +398,7 @@ export default function PurchasesScreen() {
         {Number(purchase.solde_restant) > 0 && purchase.statut !== 'annule' && <View style={styles.paymentBox}><OptionSelect label="Mode de paiement" options={PAYMENT_MODES} value={paymentMode} onChange={setPaymentMode} pageSize={PAYMENT_MODES.length} /><Text style={styles.inputLabel}>Montant versé (Ar)</Text><View style={styles.paymentRow}><TextInput style={[ui.input, styles.paymentInput]} value={paymentAmounts[purchase.public_id] || ''} onChangeText={(value) => setPaymentAmounts((current) => ({ ...current, [purchase.public_id]: value }))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={t.secondaryText} accessibilityLabel={`Montant à payer pour l’achat ${purchase.reference}, solde ${purchase.solde_restant} ariary`} /><Action label="Enregistrer le paiement" onPress={() => void pay(purchase)} disabled={busy || !(Number(paymentAmounts[purchase.public_id]) > 0)} /></View></View>}
         {Number(purchase.montant_remboursable) > 0 && <View style={styles.paymentBox}><OptionSelect label="Mode du remboursement" options={PAYMENT_MODES} value={paymentMode} onChange={setPaymentMode} pageSize={PAYMENT_MODES.length} /><Text style={styles.inputLabel}>Montant remboursé par le fournisseur (Ar)</Text><View style={styles.paymentRow}><TextInput style={[ui.input, styles.paymentInput]} value={paymentAmounts[purchase.public_id] || ''} onChangeText={(value) => setPaymentAmounts((current) => ({ ...current, [purchase.public_id]: value }))} keyboardType="decimal-pad" placeholder={`Maximum ${purchase.montant_remboursable}`} placeholderTextColor={t.secondaryText} accessibilityLabel={`Montant remboursé par le fournisseur, maximum ${purchase.montant_remboursable} ariary`} /><Action label="Enregistrer le remboursement" onPress={() => void recordSupplierRefund(purchase)} disabled={busy || !(Number(paymentAmounts[purchase.public_id]) > 0)} /></View></View>}
         {purchase.statut === 'en_attente' && purchase.montant_paye === '0.00' && <MotionPressable onPress={() => void cancel(purchase)} disabled={busy} style={styles.cancel}><Text style={styles.cancelText}>Annuler</Text></MotionPressable>}
-      </View>
-    </FadeIn>)}
+      </View>)}
     {!loading && !detailMode && <PageNavigation page={purchasePage} totalItems={filteredPurchases.length} onPageChange={setPurchasePage} />}
   </ScrollView>;
 }
@@ -398,7 +407,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   backLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingRight: 12 },
   backText: { color: t.tint, fontSize: 14, fontWeight: '600' },
   purchaseActions: { alignItems: 'flex-end', gap: 4 },
-  manageLink: { color: t.tint, fontSize: 13, fontWeight: '700', minHeight: 36, textAlignVertical: 'center' },
+  manageLink: { color: t.tint, fontSize: 13, fontWeight: '700', minHeight: 44, textAlignVertical: 'center' },
   fieldLabel: { color: t.text, fontSize: 14, fontWeight: '600', marginBottom: 6 },
   helper: { color: t.tint, fontSize: 14, fontWeight: '600', marginBottom: 12 },
   workflow: { padding: 15, marginBottom: 18, borderRadius: 16, borderWidth: 1, borderColor: t.separator, backgroundColor: t.tintSurface },

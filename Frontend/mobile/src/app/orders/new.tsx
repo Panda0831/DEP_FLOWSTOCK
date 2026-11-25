@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { api, fetchAll, type Client, type Commande, type Produit } from '@/lib/session-api';
@@ -10,6 +10,7 @@ import { MotionPressable } from '@/components/motion';
 import { OptionSelect, toOptions } from '@/components/option-select';
 import { QuantityField } from '@/components/quantity-field';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
+import { ScreenState } from '@/components/screen-state';
 
 type DraftLine = { product: string; quantity: string };
 
@@ -88,7 +89,7 @@ export default function NewOrderScreen() {
 
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Nouvelle commande" subtitle="Choisissez un client, puis ajoutez les articles à vendre." />
-    {loading ? <ActivityIndicator color={t.tint} style={styles.loader} /> : <View style={ui.card}>
+    {loading ? <ScreenState type="loading" title="Chargement des clients et des produits…" compact /> : <View style={ui.card}>
       <Text style={styles.sectionTitle}>1. Client</Text>
       <OptionSelect label="Client" options={toOptions(clients, (item) => item.nomClient, (item) => item.contact)} value={client} onChange={setClient} placeholder="Choisir un client" />
       {!clients.length && <MotionPressable onPress={() => router.push({ pathname: '/clients', params: { flow: 'order' } })} accessibilityRole="link"><Text style={styles.helper}>Ajouter un client ›</Text></MotionPressable>}

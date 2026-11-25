@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api, fetchAll, type Client, type Commande, type Delivery, type Produit } from '@/lib/session-api';
 import { Action, useUiStyles } from '@/components/resource-screen';
 import { AppPageHeading } from '@/components/page-heading';
-import { FadeIn, MotionPressable } from '@/components/motion';
+import { MotionPressable } from '@/components/motion';
 import { OptionSelect } from '@/components/option-select';
 import { LIST_PAGE_SIZE, PageNavigation } from '@/components/list-pagination';
 import { orderDisplayName } from '@/lib/order-display';
+import { ScreenState } from '@/components/screen-state';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 
 const PAYMENT_MODES = [
@@ -124,7 +125,7 @@ export default function OrdersScreen() {
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Commandes" subtitle="Enregistrez les ventes, leurs paiements et suivez leur préparation et livraison." />
     {!detailMode && <View style={styles.createRow}><Action label="Nouvelle commande" onPress={() => router.push('/orders/new')} /></View>}
-    {!!error && <Text style={ui.error}>{error}</Text>}
+    {!!error && <ScreenState type="error" title="Les commandes n’ont pas pu être actualisées." description={error} actionLabel="Réessayer" onAction={() => void load()} compact />}
     {!loading && focusedOrder && <View style={styles.workflow}>
       <Text style={styles.workflowEyebrow}>{params.step === 'delivery' ? 'PROCHAINE ÉTAPE' : 'COMMANDE CRÉÉE'}</Text>
       <Text style={styles.workflowTitle}>{orderDisplayName(focusedOrder, clients, products)}</Text>
@@ -162,11 +163,23 @@ export default function OrdersScreen() {
         </MotionPressable>;
       })}
     </View>}
-    {loading ? <ActivityIndicator color={t.tint} style={{ marginVertical: 24 }} /> : orders.length === 0 ? <Text style={ui.empty}>Aucune commande.</Text> : filteredOrders.length === 0 ? <Text style={ui.empty}>Aucune commande dans cette catégorie.</Text> : visibleOrders.map((order, index) => {
+    {loading ? <ScreenState type="loading" title="Chargement des commandes…" compact /> : error && orders.length === 0 ? null : orders.length === 0 ? <ScreenState
+      type="empty"
+      title="Aucune commande."
+      description="Créez une commande pour enregistrer une vente et suivre sa livraison."
+      actionLabel={!detailMode ? 'Nouvelle commande' : undefined}
+      onAction={!detailMode ? () => router.push('/orders/new') : undefined}
+    /> : filteredOrders.length === 0 ? <ScreenState
+      type="empty"
+      title="Aucune commande correspondante."
+      description="Modifiez votre recherche ou choisissez une autre catégorie."
+      actionLabel="Effacer la recherche"
+      onAction={() => { setOrderQuery(''); setOrderCategory('all'); setOrderPage(1); }}
+    /> : visibleOrders.map((order) => {
       const canCancel = ['en_attente', 'confirmee', 'en_preparation'].includes(order.statut);
       const canPay = Number(order.solde_restant) > 0 && !['annulee', 'retournee'].includes(order.statut);
       const canRefund = order.statut === 'retournee' && Number(order.montant_paye) > 0;
-      return <FadeIn key={order.public_id} delay={Math.min(index * 35, 280)}><View style={[styles.order, order.public_id === focusedId && styles.orderFocused]}>
+      return <View key={order.public_id} style={[styles.order, order.public_id === focusedId && styles.orderFocused]}>
         <View style={styles.orderTop}><View style={{ flex: 1 }}>{detailMode
           ? <Text style={styles.orderName}>{orderDisplayName(order, clients, products)}</Text>
           : <MotionPressable onPress={() => router.push({ pathname: '/orders/[id]', params: { id: order.public_id } })} accessibilityRole="link" accessibilityLabel={`Gérer la commande de ${orderDisplayName(order, clients, products)}`}><Text style={styles.orderName}>{orderDisplayName(order, clients, products)} ›</Text></MotionPressable>}
@@ -179,7 +192,7 @@ export default function OrdersScreen() {
         {canRefund && <View style={styles.paymentBox}><Text style={styles.label}>Rembourser un paiement reçu</Text><View style={styles.inline}><TextInput style={[ui.input, styles.money]} value={paymentAmounts[order.public_id] || ''} onChangeText={(value) => setPaymentAmounts((current) => ({ ...current, [order.public_id]: value }))} keyboardType="decimal-pad" placeholder="Montant remboursé (Ar)" /><Action label="Rembourser" onPress={() => void pay(order, 'remboursement')} disabled={busy || !(Number(paymentAmounts[order.public_id]) > 0)} /></View></View>}
         {order.statut === 'en_attente' && <View style={styles.actions}><Action label={busy ? '…' : 'Confirmer'} onPress={() => void act(order.public_id, 'confirm')} disabled={busy} /><MotionPressable onPress={() => void act(order.public_id, 'cancel')} disabled={busy} style={styles.cancelButton}><Text style={styles.cancelText}>Annuler</Text></MotionPressable></View>}
         {canCancel && order.statut !== 'en_attente' && <MotionPressable onPress={() => void act(order.public_id, 'cancel')} disabled={busy} style={styles.cancel}><Text style={styles.cancelText}>Annuler</Text></MotionPressable>}
-      </View></FadeIn>;
+      </View>;
     })}
     {!loading && !detailMode && <PageNavigation page={orderPage} totalItems={filteredOrders.length} onPageChange={setOrderPage} />}
   </ScrollView>;
@@ -188,7 +201,7 @@ export default function OrdersScreen() {
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   createRow: { marginBottom: 16 }, label: { color: t.secondaryText, fontSize: 14, lineHeight: 20, marginTop: 6, marginBottom: 8 },
   backLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingRight: 12 }, backText: { color: t.tint, fontSize: 14, fontWeight: '600' },
-  orderActions: { alignItems: 'flex-end', gap: 4 }, manageLink: { color: t.tint, fontSize: 13, fontWeight: '700', minHeight: 36, textAlignVertical: 'center' },
+  orderActions: { alignItems: 'flex-end', gap: 4 }, manageLink: { color: t.tint, fontSize: 13, fontWeight: '700', minHeight: 44, textAlignVertical: 'center' },
   search: { minHeight: 48, borderWidth: 1, borderColor: t.separator, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, color: t.text, backgroundColor: t.surface, marginBottom: 10 },
   categoryList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   categoryButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: t.separator, borderRadius: 22, backgroundColor: t.surface },

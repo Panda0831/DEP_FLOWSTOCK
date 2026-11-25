@@ -79,6 +79,7 @@ function Field({
       <TextInput
         nativeID={`flowstock-login-${icon}`}
         style={styles.input}
+        accessibilityLabel={placeholder}
         placeholder={placeholder}
         placeholderTextColor={t.secondaryText}
         value={value}
@@ -197,9 +198,6 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <StatusBar style="auto" />
-      <View pointerEvents="none" style={styles.topGlow} />
-      <View pointerEvents="none" style={styles.bottomGlowLeft} />
-      <View pointerEvents="none" style={styles.bottomGlowRight} />
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -244,6 +242,7 @@ export default function HomeScreen() {
                     onPress={() => setShowPassword((visible) => !visible)}
                     accessibilityRole="button"
                     accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                    style={styles.passwordToggle}
                     hitSlop={10}>
                     <PasswordEye hidden={!showPassword} />
                   </Pressable>
@@ -316,36 +315,9 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 30 },
   content: { width: '100%', maxWidth: 420, alignSelf: 'center' },
-  topGlow: {
-    position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 140,
-    backgroundColor: t.tintSurface,
-    top: -190,
-    left: -130,
-  },
-  bottomGlowLeft: {
-    position: 'absolute',
-    width: 190,
-    height: 190,
-    borderRadius: 100,
-    backgroundColor: t.background,
-    bottom: -145,
-    left: -95,
-  },
-  bottomGlowRight: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 120,
-    backgroundColor: t.background,
-    bottom: -175,
-    right: 0,
-  },
   brand: { alignItems: 'center', marginBottom: 26 },
-  form: { gap: 15 },
-  heading: { color: t.text, fontSize: 28, fontWeight: '800', textAlign: 'center', marginBottom: 7 },
+  form: { gap: 15, backgroundColor: t.surface, padding: 22, borderWidth: 1, borderColor: t.separator, borderRadius: 20 },
+  heading: { color: t.text, fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: 7 },
   field: {
     height: 58,
     borderWidth: 1,
@@ -384,12 +356,12 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     transform: [{ rotate: '-42deg' }],
   },
   loginOptions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: -3 },
-  rememberButton: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 },
+  rememberButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 },
   checkbox: { width: 18, height: 18, borderWidth: 1.5, borderColor: t.separator, borderRadius: 5, backgroundColor: t.surface, alignItems: 'center', justifyContent: 'center' },
   checkboxChecked: { backgroundColor: t.tint, borderColor: t.tint },
   checkboxMark: { color: t.onTint, fontSize: 12, fontWeight: '900', lineHeight: 14 },
   rememberText: { color: t.secondaryText, fontSize: 14, lineHeight: 20, fontWeight: '600' },
-  forgotButton: { paddingVertical: 2 },
+  forgotButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 2 },
   forgotText: { color: t.tint, fontWeight: '600', fontSize: 14 },
   message: { color: t.danger, fontSize: 14, lineHeight: 21, marginTop: -4, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: t.dangerSurface, borderRadius: 11 },
   lockoutAction: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
@@ -397,7 +369,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   successMessage: { color: t.tint, backgroundColor: t.tintSurface },
   disabled: { opacity: 0.72 },
   primaryButton: {
-    height: 58,
+    minHeight: 56,
     backgroundColor: t.tint,
     borderRadius: 15,
     alignItems: 'center',
@@ -410,7 +382,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     elevation: 3,
   },
   primaryButtonText: { color: t.onTint, fontSize: 19, fontWeight: '700' },
-  footer: { alignItems: 'center', marginTop: 38, gap: 5 },
+  passwordToggle: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  footer: { alignItems: 'center', marginTop: 24, gap: 5 },
   footerPrompt: { color: t.secondaryText, fontSize: 15 },
   footerLink: { color: t.tint, fontWeight: '700', fontSize: 16, paddingVertical: 4 },
 });

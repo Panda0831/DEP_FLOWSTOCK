@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api, fetchAll, type Client, type Commande, type Delivery, type Produit } from '@/lib/session-api';
 import { Action, useUiStyles } from '@/components/resource-screen';
@@ -11,6 +11,7 @@ import { orderDisplayName } from '@/lib/order-display';
 import { useAppTheme, type AppTheme } from '@/hooks/use-app-theme';
 import { OptionSelect, toOptions } from '@/components/option-select';
 import { FormDisclosure } from '@/components/form-disclosure';
+import { ScreenState } from '@/components/screen-state';
 
 const DELIVERY_STATUSES = [
   { value: 'en_cours', label: 'En cours' },
@@ -152,7 +153,7 @@ export default function DeliveriesScreen() {
   return <ScrollView style={ui.page} contentContainerStyle={ui.content} showsVerticalScrollIndicator={false}>
     <AppPageHeading title="Livraisons" subtitle="Suivez les expéditions et mettez leur statut à jour." />
     {!detailMode && <View style={styles.createRow}><Action label="Nouvelle livraison" onPress={() => router.push('/deliveries/new')} /></View>}
-    {!!error && <Text style={ui.error}>{error}</Text>}
+    {!!error && <ScreenState type="error" title="Les livraisons n’ont pas pu être actualisées." description={error} actionLabel="Réessayer" onAction={() => void load()} compact />}
     {!loading && focusedDelivery && <View style={styles.workflow}>
       <Text style={styles.workflowTitle}>{orderName(focusedDelivery.commande)}</Text>
       <Text style={styles.workflowReference}>Référence : {focusedDelivery.reference_commande || focusedDelivery.commande.slice(0, 8)}</Text>
@@ -180,8 +181,19 @@ export default function DeliveriesScreen() {
       </FormDisclosure>
     </>}
     <View style={styles.sectionHeading}><Text style={ui.section}>{detailMode ? 'Gérer la livraison' : 'Suivi des livraisons'}</Text><MotionPressable onPress={() => void load()}><Text style={ui.refresh}>Actualiser</Text></MotionPressable></View>
-    {loading ? <ActivityIndicator color={t.tint} style={{ marginVertical: 24 }} /> : items.length === 0 ? <Text style={ui.empty}>Aucune livraison enregistrée.</Text> : visibleDeliveries.length === 0 ? <Text style={ui.empty}>Aucune livraison ne correspond à ces filtres.</Text> : visibleDeliveries.map((delivery, index) => <FadeIn key={delivery.public_id} delay={Math.min(index * 40, 280)}>
-      <View style={[styles.row, delivery.public_id === focusedId && styles.rowFocused]}>
+    {loading ? <ScreenState type="loading" title="Chargement des livraisons…" compact /> : error && items.length === 0 ? null : items.length === 0 ? <ScreenState
+      type="empty"
+      title="Aucune livraison enregistrée."
+      description="Les livraisons apparaîtront après confirmation d’une commande."
+      actionLabel={!detailMode ? 'Nouvelle livraison' : undefined}
+      onAction={!detailMode ? () => router.push('/deliveries/new') : undefined}
+    /> : visibleDeliveries.length === 0 ? <ScreenState
+      type="empty"
+      title="Aucune livraison correspondante."
+      description="Modifiez votre recherche ou les filtres pour afficher des livraisons."
+      actionLabel="Effacer les filtres"
+      onAction={() => { setDeliverySearch(''); setClientFilter(''); setProductFilter(''); setStatusFilter(''); setDeliveryPage(1); }}
+    /> : visibleDeliveries.map((delivery) => <View key={delivery.public_id} style={[styles.row, delivery.public_id === focusedId && styles.rowFocused]}>
         <View style={styles.deliveryTop}><View style={{ flex: 1 }}><MotionPressable onPress={() => router.push({ pathname: '/orders/[id]', params: { id: delivery.commande } })} accessibilityRole="link" accessibilityLabel={`Ouvrir la commande de ${orderName(delivery.commande)}`}><Text style={styles.name}>{orderName(delivery.commande)} ›</Text></MotionPressable><Text style={styles.detail}>Référence : {delivery.reference_commande || delivery.commande.slice(0, 8)}</Text></View><View style={styles.deliveryActions}><Text style={[styles.status, delivery.statut === 'livree' && styles.statusDone]}>{delivery.statut.replaceAll('_', ' ')}</Text>{!detailMode && <MotionPressable onPress={() => router.push({ pathname: '/deliveries/[id]', params: { id: delivery.public_id } })} accessibilityRole="link" accessibilityLabel={`Gérer la livraison de ${orderName(delivery.commande)}`}><Text style={styles.manageLink}>Gérer ›</Text></MotionPressable>}</View></View>
         {!!clientFor(delivery)?.contact && <Text style={styles.detail}>Contact : {clientFor(delivery)?.contact}</Text>}
         <Text style={styles.detail}>Adresse : {delivery.adresse?.trim() || clientFor(delivery)?.adresse || '—'}</Text>
@@ -194,8 +206,7 @@ export default function DeliveriesScreen() {
         {delivery.statut === 'expediee' && <View style={styles.actions}><Action label="Livrer" onPress={() => void mark(delivery.public_id, 'mark-delivered')} disabled={busy} /><MotionPressable onPress={() => void mark(delivery.public_id, 'mark-failed')} disabled={busy} style={styles.failButton}><Text style={styles.failText}>Échec</Text></MotionPressable></View>}
         {delivery.statut === 'echec' && <View style={styles.actions}><Action label="Relancer" onPress={() => void mark(delivery.public_id, 'retry')} disabled={busy} /></View>}
         {delivery.statut === 'livree' && <View style={styles.actions}><MotionPressable onPress={() => void mark(delivery.public_id, 'mark-returned')} disabled={busy} style={styles.failButton}><Text style={styles.failText}>Retour</Text></MotionPressable></View>}
-      </View>
-    </FadeIn>)}
+      </View>)}
     {!loading && !detailMode && <PageNavigation page={deliveryPage} totalItems={filteredDeliveries.length} onPageChange={setDeliveryPage} />}
   </ScrollView>;
 }
@@ -204,7 +215,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   backLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingRight: 12 },
   backText: { color: t.tint, fontSize: 14, fontWeight: '600' },
   deliveryActions: { alignItems: 'flex-end', gap: 4 },
-  manageLink: { color: t.tint, fontSize: 13, fontWeight: '700', minHeight: 36, textAlignVertical: 'center' },
+  manageLink: { color: t.tint, fontSize: 13, fontWeight: '700', minHeight: 44, textAlignVertical: 'center' },
   createRow: { marginBottom: 16 },
   workflow: { padding: 15, marginBottom: 18, borderRadius: 16, borderWidth: 1, borderColor: t.separator, backgroundColor: t.tintSurface },
   workflowTitle: { color: t.text, fontSize: 16, fontWeight: '700' },
