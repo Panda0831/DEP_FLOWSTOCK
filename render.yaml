@@ -1,0 +1,62 @@
+databases:
+  - name: flowstock-db
+    region: oregon
+    plan: free
+    databaseName: flowstock
+    user: flowstock
+    postgresMajorVersion: "17"
+
+services:
+  - type: web
+    name: flowstock-api
+    runtime: docker
+    region: oregon
+    plan: free
+    rootDir: Bakend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: >-
+      /bin/sh -c "python manage.py collectstatic --noinput --settings=config.settings.prod
+      && python manage.py migrate --settings=config.settings.prod
+      && exec gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --access-logfile - --error-logfile -"
+    healthCheckPath: /healthz/
+    autoDeployTrigger: off
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        fromService:
+          name: flowstock-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_HOSTNAME
+      - key: DATABASE_URL
+        fromDatabase:
+          name: flowstock-db
+          property: connectionString
+      - key: ACTIVER_DOCUMENTATION_API
+        value: "False"
+      - key: SECURE_SSL_REDIRECT
+        value: "True"
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://flowstock-web.onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://flowstock-web.onrender.com
+
+  - type: web
+    name: flowstock-web
+    runtime: static
+    rootDir: Frontend/mobile
+    buildCommand: npm ci && npx expo export --platform web
+    staticPublishPath: dist
+    autoDeployTrigger: off
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: EXPO_PUBLIC_API_URL
+        value: https://flowstock-api.onrender.com/api/v1

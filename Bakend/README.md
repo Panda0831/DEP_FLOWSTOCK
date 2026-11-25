@@ -69,3 +69,8 @@ GitHub `VPS_DEPLOY_ENABLED=true` est activée. La procédure, les secrets GitHub
 requis, les prérequis du serveur et les limites sont décrits dans
 [`deploy/vps/README.md`](../deploy/vps/README.md). Aucun VPS n’est choisi ou
 provisionné par le dépôt.
+
+Pour un déploiement Render, consultez [`deploy/render/README.md`](../deploy/render/README.md)
+et l’index des [configurations de déploiement](../deploy/README.md). Le Blueprint
+Render prépare une instance gratuite pour essai et décrit ses limites de
+conservation des données. Aucune ressource Render n’est créée par le dépôt.

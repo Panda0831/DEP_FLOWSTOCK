@@ -4,6 +4,7 @@ djangorestframework==3.16.1
 drf-spectacular==0.28.0
 django-axes==8.0.0
 django-cors-headers==4.9.0
+whitenoise>=6.8,<7
 argon2-cffi==25.1.0
 psycopg[binary]==3.3.3
 gunicorn==25.1.0
